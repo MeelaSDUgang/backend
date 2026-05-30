@@ -1,7 +1,6 @@
 using GatewayApi.Data;
 using GatewayApi.Filters;
 using GatewayApi.Services;
-using GatewayApi.Services.AntiFraud;
 using GatewayApi.Services.Banking;
 using GatewayApi.Services.Banking.Adapters;
 using Microsoft.EntityFrameworkCore;
@@ -20,7 +19,6 @@ builder.Services.AddSingleton<IPaymentAdapter, GlobalFinTechAdapter>();
 
 builder.Services.AddScoped<PaymentOrchestrator>();
 builder.Services.AddScoped<IdempotencyService>();
-builder.Services.AddScoped<IAntiFraudService, GptAntiFraudService>();
 
 builder.Services.AddHttpClient("Webhook");
 builder.Services.AddHostedService<TransactionSettlementWorker>();

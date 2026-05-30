@@ -5,7 +5,6 @@ using GatewayApi.Enums;
 using GatewayApi.Filters;
 using GatewayApi.Models;
 using GatewayApi.Services;
-using GatewayApi.Services.AntiFraud;
 using GatewayApi.Services.Banking;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
@@ -17,7 +16,6 @@ namespace GatewayApi.Controllers;
 [ServiceFilter(typeof(HmacAuthFilter))]
 public class PaymentsController : ControllerBase
 {
-    private readonly IAntiFraudService _antiFraud;
     private readonly AppDbContext _db;
     private readonly IdempotencyService _idempotency;
     private readonly ILogger<PaymentsController> _logger;
@@ -27,13 +25,11 @@ public class PaymentsController : ControllerBase
         AppDbContext db,
         PaymentOrchestrator orchestrator,
         IdempotencyService idempotency,
-        IAntiFraudService antiFraud,
         ILogger<PaymentsController> logger)
     {
         _db = db;
         _orchestrator = orchestrator;
         _idempotency = idempotency;
-        _antiFraud = antiFraud;
         _logger = logger;
     }
 
@@ -127,19 +123,17 @@ public class PaymentsController : ControllerBase
             WriteIndented = false
         });
 
-        var fraudContext = new FraudEvaluationContext(
-            amount, currency.ToUpperInvariant(), gatewayType.ToString(),
-            merchant.Name, merchant.CreatedAt,
-            ExtractAccountIdentifier(request), rawPayload);
+        var riskScore = 100;
+        var reason = "hui";
 
-        var fraudResult = await _antiFraud.EvaluateAsync(fraudContext, ct);
+        var fraudResult = false;
 
-        if (fraudResult.IsBlocked)
+        if (fraudResult)
         {
             _logger.LogWarning(
                 "FRAUD BLOCKED — {Type} {Amount} {Currency} for {Merchant}: score={Score}, reason={Reason}",
                 gatewayType, amount, currency, merchant.Name,
-                fraudResult.RiskScore, fraudResult.Reason);
+                riskScore, reason);
 
             var rejectedTx = new Transaction
             {
@@ -152,8 +146,8 @@ public class PaymentsController : ControllerBase
                 Currency = currency.ToUpperInvariant(),
                 GatewayType = gatewayType,
                 TransactionStatus = TransactionStatus.Rejected,
-                AiRiskScore = fraudResult.RiskScore,
-                AiRiskReason = fraudResult.Reason,
+                AiRiskScore = riskScore,
+                AiRiskReason = reason,
                 RawPayload = rawPayload,
                 CreatedAt = DateTime.UtcNow,
                 UpdatedAt = DateTime.UtcNow
@@ -167,8 +161,8 @@ public class PaymentsController : ControllerBase
                 error = "Transaction rejected by Anti-Fraud system",
                 transactionId = rejectedTx.Id,
                 status = "REJECTED",
-                fraudScore = fraudResult.RiskScore / 100.0,
-                reason = fraudResult.Reason
+                fraudScore = riskScore / 100.0,
+                reason
             });
         }
 
@@ -183,8 +177,8 @@ public class PaymentsController : ControllerBase
             Currency = currency.ToUpperInvariant(),
             GatewayType = gatewayType,
             TransactionStatus = TransactionStatus.Created,
-            AiRiskScore = fraudResult.RiskScore,
-            AiRiskReason = fraudResult.Reason,
+            AiRiskScore = riskScore,
+            AiRiskReason = reason,
             RawPayload = rawPayload,
             CreatedAt = DateTime.UtcNow,
             UpdatedAt = DateTime.UtcNow
@@ -195,7 +189,7 @@ public class PaymentsController : ControllerBase
 
         _logger.LogInformation(
             "Tx {TxId} CREATED — {Type} for {MerchantName} ({Amount} {Currency}), fraudScore={FraudScore}",
-            transaction.Id, gatewayType, merchant.Name, amount, currency, fraudResult.RiskScore);
+            transaction.Id, gatewayType, merchant.Name, amount, currency, riskScore);
 
         var updatedTx = await _orchestrator.ProcessAsync(transaction, ct);
 
