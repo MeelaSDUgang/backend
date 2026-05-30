@@ -4,11 +4,15 @@ namespace GatewayApi.Entities;
 
 public class User
 {
-    public string Id { get; set; } = Guid.NewGuid().ToString("N");
+    public Guid Id { get; set; }
 
     public string FullName { get; set; } = string.Empty;
 
     public string Phone { get; set; } = string.Empty;
+
+    public string ApiKey { get; set; }
+
+    public string SecretKeyHash { get; set; }
 
     public AccountStatus AccountStatus { get; set; } = AccountStatus.ACTIVE;
 
@@ -19,4 +23,6 @@ public class User
     public ICollection<Operation> Operations { get; set; } = [];
 
     public ICollection<AppealCase> AppealCases { get; set; } = [];
+
+    public ICollection<Transaction> Transactions { get; set; } = [];
 }

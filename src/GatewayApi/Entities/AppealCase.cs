@@ -4,13 +4,13 @@ namespace GatewayApi.Entities;
 
 public class AppealCase
 {
-    public string Id { get; set; } = Guid.NewGuid().ToString("N");
+    public Guid Id { get; set; }
 
-    public string UserId { get; set; } = string.Empty;
+    public Guid UserId { get; set; }
 
     public User User { get; set; } = null!;
 
-    public string? OperationId { get; set; }
+    public Guid? OperationId { get; set; }
 
     public Operation? Operation { get; set; }
 

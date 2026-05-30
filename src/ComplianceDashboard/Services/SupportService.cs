@@ -36,7 +36,10 @@ public class SupportService(DashboardDbContext dbContext) : ISupportService
         string caseId,
         CancellationToken cancellationToken)
     {
-        var appealCase = await LoadFullCase(caseId)
+        if (!Guid.TryParse(caseId, out var parsedCaseId))
+            return ServiceResult<SupportCaseDetailsResponse>.Failure(ErrorCodes.NotFound, "Appeal case not found.");
+
+        var appealCase = await LoadFullCase(parsedCaseId)
             .AsNoTracking()
             .FirstOrDefaultAsync(cancellationToken);
 
@@ -54,9 +57,12 @@ public class SupportService(DashboardDbContext dbContext) : ISupportService
             return ServiceResult<SubmitSupportDecisionResponse>.Failure(ErrorCodes.ValidationError,
                 "Invalid decision.");
 
+        if (!Guid.TryParse(caseId, out var parsedCaseId))
+            return ServiceResult<SubmitSupportDecisionResponse>.Failure(ErrorCodes.NotFound, "Appeal case not found.");
+
         var appealCase = await dbContext.AppealCases
             .Include(appealCase => appealCase.Operation)
-            .FirstOrDefaultAsync(appealCase => appealCase.Id == caseId, cancellationToken);
+            .FirstOrDefaultAsync(appealCase => appealCase.Id == parsedCaseId, cancellationToken);
 
         if (appealCase is null)
             return ServiceResult<SubmitSupportDecisionResponse>.Failure(ErrorCodes.NotFound, "Appeal case not found.");
@@ -64,8 +70,7 @@ public class SupportService(DashboardDbContext dbContext) : ISupportService
         var now = DateTime.UtcNow;
         var supportDecision = new SupportDecision
         {
-            Id = await GetNextIdAsync("decision", dbContext.SupportDecisions.Select(decision => decision.Id),
-                cancellationToken),
+            Id = Guid.NewGuid(),
             CaseId = appealCase.Id,
             Decision = decisionType.ToString(),
             Comment = string.IsNullOrWhiteSpace(request.Comment) ? null : request.Comment.Trim(),
@@ -85,7 +90,7 @@ public class SupportService(DashboardDbContext dbContext) : ISupportService
                 appealCase.Operation?.Status));
     }
 
-    private IQueryable<AppealCase> LoadFullCase(string caseId)
+    private IQueryable<AppealCase> LoadFullCase(Guid caseId)
     {
         return dbContext.AppealCases
             .Include(appealCase => appealCase.User)
@@ -99,7 +104,7 @@ public class SupportService(DashboardDbContext dbContext) : ISupportService
     private static SupportCaseListItemResponse ToListItem(AppealCase appealCase)
     {
         return new SupportCaseListItemResponse(
-            appealCase.Id,
+            appealCase.Id.ToString(),
             appealCase.User.FullName,
             GetCaseTypeLabel(appealCase.CaseType),
             appealCase.Operation is null ? null : FormatAmount(appealCase.Operation.Amount),
@@ -112,7 +117,7 @@ public class SupportService(DashboardDbContext dbContext) : ISupportService
     private static SupportCaseDetailsResponse ToDetails(AppealCase appealCase)
     {
         return new SupportCaseDetailsResponse(
-            appealCase.Id,
+            appealCase.Id.ToString(),
             ResponseMapper.ToResponse(appealCase.User),
             appealCase.Operation is null ? null : ResponseMapper.ToResponse(appealCase.Operation),
             appealCase.CaseType,
@@ -173,25 +178,6 @@ public class SupportService(DashboardDbContext dbContext) : ISupportService
         where TEnum : struct, Enum
     {
         return Enum.TryParse(value, false, out result) && Enum.IsDefined(result);
-    }
-
-    private static async Task<string> GetNextIdAsync(
-        string prefix,
-        IQueryable<string> ids,
-        CancellationToken cancellationToken)
-    {
-        var values = await ids.ToListAsync(cancellationToken);
-        var expectedPrefix = $"{prefix}_";
-        var usedNumbers = values
-            .Where(id => id.StartsWith(expectedPrefix, StringComparison.OrdinalIgnoreCase))
-            .Select(id => int.TryParse(id[expectedPrefix.Length..], out var number) ? number : 0)
-            .Where(number => number > 0)
-            .ToHashSet();
-
-        var nextNumber = 1;
-        while (usedNumbers.Contains(nextNumber)) nextNumber++;
-
-        return $"{prefix}_{nextNumber}";
     }
 
     private static string FormatAmount(decimal amount)

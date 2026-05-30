@@ -18,8 +18,6 @@ public partial class DashboardDbContext : DbContext
 
     public virtual DbSet<BankAdapter> BankAdapters { get; set; }
 
-    public virtual DbSet<Merchant> Merchants { get; set; }
-
     public virtual DbSet<Operation> Operations { get; set; }
 
     public virtual DbSet<SupportDecision> SupportDecisions { get; set; }
@@ -38,7 +36,9 @@ public partial class DashboardDbContext : DbContext
 
             entity.HasIndex(e => new { e.CaseId, e.QuestionKey }, "IX_appeal_answers_case_id_question_key").IsUnique();
 
-            entity.Property(e => e.Id).HasColumnName("id");
+            entity.Property(e => e.Id)
+                .ValueGeneratedNever()
+                .HasColumnName("id");
             entity.Property(e => e.Answer)
                 .HasMaxLength(4000)
                 .HasColumnName("answer");
@@ -66,7 +66,9 @@ public partial class DashboardDbContext : DbContext
 
             entity.HasIndex(e => e.UserId, "IX_appeal_cases_user_id");
 
-            entity.Property(e => e.Id).HasColumnName("id");
+            entity.Property(e => e.Id)
+                .ValueGeneratedNever()
+                .HasColumnName("id");
             entity.Property(e => e.CaseType)
                 .HasMaxLength(32)
                 .HasColumnName("case_type");
@@ -105,7 +107,9 @@ public partial class DashboardDbContext : DbContext
 
             entity.HasIndex(e => e.CaseId, "IX_appeal_documents_case_id");
 
-            entity.Property(e => e.Id).HasColumnName("id");
+            entity.Property(e => e.Id)
+                .ValueGeneratedNever()
+                .HasColumnName("id");
             entity.Property(e => e.CaseId).HasColumnName("case_id");
             entity.Property(e => e.CreatedAt).HasColumnName("created_at");
             entity.Property(e => e.DocumentType)
@@ -129,15 +133,6 @@ public partial class DashboardDbContext : DbContext
             entity.Property(e => e.SupportedGatewayTypes).HasMaxLength(50);
         });
 
-        modelBuilder.Entity<Merchant>(entity =>
-        {
-            entity.HasIndex(e => e.ApiKey, "IX_Merchants_ApiKey").IsUnique();
-
-            entity.Property(e => e.Id).ValueGeneratedNever();
-            entity.Property(e => e.ApiKey).HasMaxLength(100);
-            entity.Property(e => e.Name).HasMaxLength(200);
-        });
-
         modelBuilder.Entity<Operation>(entity =>
         {
             entity.ToTable("operations");
@@ -146,7 +141,9 @@ public partial class DashboardDbContext : DbContext
 
             entity.HasIndex(e => e.UserId, "IX_operations_user_id");
 
-            entity.Property(e => e.Id).HasColumnName("id");
+            entity.Property(e => e.Id)
+                .ValueGeneratedNever()
+                .HasColumnName("id");
             entity.Property(e => e.Amount)
                 .HasPrecision(18, 2)
                 .HasColumnName("amount");
@@ -180,7 +177,9 @@ public partial class DashboardDbContext : DbContext
 
             entity.HasIndex(e => e.CaseId, "IX_support_decisions_case_id");
 
-            entity.Property(e => e.Id).HasColumnName("id");
+            entity.Property(e => e.Id)
+                .ValueGeneratedNever()
+                .HasColumnName("id");
             entity.Property(e => e.CaseId).HasColumnName("case_id");
             entity.Property(e => e.Comment)
                 .HasMaxLength(2000)
@@ -197,10 +196,10 @@ public partial class DashboardDbContext : DbContext
         {
             entity.HasIndex(e => e.BankId, "IX_Transactions_BankId");
 
-            entity.HasIndex(e => new { e.IdempotencyKey, e.MerchantId }, "IX_Transactions_IdempotencyKey_MerchantId")
+            entity.HasIndex(e => new { e.IdempotencyKey, e.UserId }, "IX_Transactions_IdempotencyKey_UserId")
                 .IsUnique();
 
-            entity.HasIndex(e => e.MerchantId, "IX_Transactions_MerchantId");
+            entity.HasIndex(e => e.UserId, "IX_Transactions_UserId");
 
             entity.Property(e => e.Id).ValueGeneratedNever();
             entity.Property(e => e.Amount).HasPrecision(18, 2);
@@ -213,8 +212,8 @@ public partial class DashboardDbContext : DbContext
                 .HasForeignKey(d => d.BankId)
                 .OnDelete(DeleteBehavior.Restrict);
 
-            entity.HasOne(d => d.Merchant).WithMany(p => p.Transactions)
-                .HasForeignKey(d => d.MerchantId)
+            entity.HasOne(d => d.User).WithMany(p => p.Transactions)
+                .HasForeignKey(d => d.UserId)
                 .OnDelete(DeleteBehavior.Restrict);
         });
 
@@ -222,12 +221,17 @@ public partial class DashboardDbContext : DbContext
         {
             entity.ToTable("users");
 
+            entity.HasIndex(e => e.ApiKey, "IX_users_ApiKey").IsUnique();
+
             entity.HasIndex(e => e.Phone, "IX_users_phone").IsUnique();
 
-            entity.Property(e => e.Id).HasColumnName("id");
+            entity.Property(e => e.Id)
+                .ValueGeneratedNever()
+                .HasColumnName("id");
             entity.Property(e => e.AccountStatus)
                 .HasMaxLength(16)
                 .HasColumnName("account_status");
+            entity.Property(e => e.ApiKey).HasMaxLength(100);
             entity.Property(e => e.CreatedAt).HasColumnName("created_at");
             entity.Property(e => e.FullName)
                 .HasMaxLength(200)

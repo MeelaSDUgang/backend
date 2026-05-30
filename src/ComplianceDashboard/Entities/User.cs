@@ -2,11 +2,15 @@
 
 public class User
 {
-    public string Id { get; set; } = null!;
+    public Guid Id { get; set; }
 
     public string FullName { get; set; } = null!;
 
     public string Phone { get; set; } = null!;
+
+    public string ApiKey { get; set; } = null!;
+
+    public string SecretKeyHash { get; set; } = null!;
 
     public string AccountStatus { get; set; } = null!;
 
@@ -17,4 +21,6 @@ public class User
     public virtual ICollection<AppealCase> AppealCases { get; set; } = new List<AppealCase>();
 
     public virtual ICollection<Operation> Operations { get; set; } = new List<Operation>();
+
+    public virtual ICollection<Transaction> Transactions { get; set; } = new List<Transaction>();
 }

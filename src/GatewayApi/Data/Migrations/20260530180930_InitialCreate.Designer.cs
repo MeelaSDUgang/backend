@@ -12,7 +12,7 @@ using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 namespace GatewayApi.Data.Migrations
 {
     [DbContext(typeof(AppDbContext))]
-    [Migration("20260530164501_InitialCreate")]
+    [Migration("20260530180930_InitialCreate")]
     partial class InitialCreate
     {
         /// <inheritdoc />
@@ -27,8 +27,9 @@ namespace GatewayApi.Data.Migrations
 
             modelBuilder.Entity("GatewayApi.Entities.AppealAnswer", b =>
                 {
-                    b.Property<string>("Id")
-                        .HasColumnType("text")
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
                         .HasColumnName("id");
 
                     b.Property<string>("Answer")
@@ -37,9 +38,8 @@ namespace GatewayApi.Data.Migrations
                         .HasColumnType("character varying(4000)")
                         .HasColumnName("answer");
 
-                    b.Property<string>("CaseId")
-                        .IsRequired()
-                        .HasColumnType("text")
+                    b.Property<Guid>("CaseId")
+                        .HasColumnType("uuid")
                         .HasColumnName("case_id");
 
                     b.Property<DateTimeOffset>("CreatedAt")
@@ -70,8 +70,9 @@ namespace GatewayApi.Data.Migrations
 
             modelBuilder.Entity("GatewayApi.Entities.AppealCase", b =>
                 {
-                    b.Property<string>("Id")
-                        .HasColumnType("text")
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
                         .HasColumnName("id");
 
                     b.Property<string>("CaseType")
@@ -93,8 +94,8 @@ namespace GatewayApi.Data.Migrations
                         .HasColumnType("jsonb")
                         .HasColumnName("missing_info_json");
 
-                    b.Property<string>("OperationId")
-                        .HasColumnType("text")
+                    b.Property<Guid?>("OperationId")
+                        .HasColumnType("uuid")
                         .HasColumnName("operation_id");
 
                     b.Property<string>("RouteTo")
@@ -118,9 +119,8 @@ namespace GatewayApi.Data.Migrations
                         .HasColumnType("timestamp with time zone")
                         .HasColumnName("updated_at");
 
-                    b.Property<string>("UserId")
-                        .IsRequired()
-                        .HasColumnType("text")
+                    b.Property<Guid>("UserId")
+                        .HasColumnType("uuid")
                         .HasColumnName("user_id");
 
                     b.HasKey("Id");
@@ -138,7 +138,7 @@ namespace GatewayApi.Data.Migrations
                     b.HasData(
                         new
                         {
-                            Id = "case_2",
+                            Id = new Guid("cccccccc-cccc-cccc-cccc-ccccccccccc2"),
                             CaseType = "ACCOUNT_BLOCK_APPEAL",
                             CreatedAt = new DateTimeOffset(new DateTime(2026, 5, 30, 10, 30, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0)),
                             MissingInfoJson = "[\"Source of funds confirmation is required\", \"Purpose of incoming transfers is required\"]",
@@ -146,32 +146,32 @@ namespace GatewayApi.Data.Migrations
                             Status = "NEED_MORE_INFO",
                             SupportSummary = "Client reported account restriction after several incoming transfers. Supporting documents are not attached yet.",
                             UpdatedAt = new DateTimeOffset(new DateTime(2026, 5, 30, 10, 30, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0)),
-                            UserId = "user_2"
+                            UserId = new Guid("22222222-2222-2222-2222-222222222222")
                         },
                         new
                         {
-                            Id = "case_3",
+                            Id = new Guid("cccccccc-cccc-cccc-cccc-ccccccccccc3"),
                             CaseType = "OPERATION_CONFIRMATION",
                             CreatedAt = new DateTimeOffset(new DateTime(2026, 5, 30, 10, 30, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0)),
                             MissingInfoJson = "[]",
-                            OperationId = "op_3",
+                            OperationId = new Guid("aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaa3"),
                             RouteTo = "SUPPORT",
                             Status = "SUBMITTED",
                             SupportSummary = "Client confirmed service payment. Recipient is a company/service. Payment check is attached.",
                             UpdatedAt = new DateTimeOffset(new DateTime(2026, 5, 30, 10, 30, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0)),
-                            UserId = "user_3"
+                            UserId = new Guid("33333333-3333-3333-3333-333333333333")
                         });
                 });
 
             modelBuilder.Entity("GatewayApi.Entities.AppealDocument", b =>
                 {
-                    b.Property<string>("Id")
-                        .HasColumnType("text")
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
                         .HasColumnName("id");
 
-                    b.Property<string>("CaseId")
-                        .IsRequired()
-                        .HasColumnType("text")
+                    b.Property<Guid>("CaseId")
+                        .HasColumnType("uuid")
                         .HasColumnName("case_id");
 
                     b.Property<DateTimeOffset>("CreatedAt")
@@ -231,44 +231,11 @@ namespace GatewayApi.Data.Migrations
                     b.ToTable("BankAdapters");
                 });
 
-            modelBuilder.Entity("GatewayApi.Entities.Merchant", b =>
+            modelBuilder.Entity("GatewayApi.Entities.Operation", b =>
                 {
                     b.Property<Guid>("Id")
                         .ValueGeneratedOnAdd()
-                        .HasColumnType("uuid");
-
-                    b.Property<string>("ApiKey")
-                        .IsRequired()
-                        .HasMaxLength(100)
-                        .HasColumnType("character varying(100)");
-
-                    b.Property<DateTime>("CreatedAt")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.Property<string>("Name")
-                        .IsRequired()
-                        .HasMaxLength(200)
-                        .HasColumnType("character varying(200)");
-
-                    b.Property<string>("SecretKeyHash")
-                        .IsRequired()
-                        .HasColumnType("text");
-
-                    b.Property<string>("WebhookUrl")
-                        .HasColumnType("text");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("ApiKey")
-                        .IsUnique();
-
-                    b.ToTable("Merchants");
-                });
-
-            modelBuilder.Entity("GatewayApi.Entities.Operation", b =>
-                {
-                    b.Property<string>("Id")
-                        .HasColumnType("text")
+                        .HasColumnType("uuid")
                         .HasColumnName("id");
 
                     b.Property<decimal>("Amount")
@@ -313,9 +280,8 @@ namespace GatewayApi.Data.Migrations
                         .HasColumnType("timestamp with time zone")
                         .HasColumnName("updated_at");
 
-                    b.Property<string>("UserId")
-                        .IsRequired()
-                        .HasColumnType("text")
+                    b.Property<Guid>("UserId")
+                        .HasColumnType("uuid")
                         .HasColumnName("user_id");
 
                     b.HasKey("Id");
@@ -329,7 +295,7 @@ namespace GatewayApi.Data.Migrations
                     b.HasData(
                         new
                         {
-                            Id = "op_1",
+                            Id = new Guid("aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaa1"),
                             Amount = 250000m,
                             BlockReasonCode = "CLIENT_CONFIRMATION_REQUIRED",
                             CreatedAt = new DateTimeOffset(new DateTime(2026, 5, 30, 10, 30, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0)),
@@ -338,11 +304,11 @@ namespace GatewayApi.Data.Migrations
                             RecipientName = "Alisher M.",
                             Status = "PENDING_CONFIRMATION",
                             UpdatedAt = new DateTimeOffset(new DateTime(2026, 5, 30, 10, 30, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0)),
-                            UserId = "user_1"
+                            UserId = new Guid("11111111-1111-1111-1111-111111111111")
                         },
                         new
                         {
-                            Id = "op_3",
+                            Id = new Guid("aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaa3"),
                             Amount = 45000m,
                             BlockReasonCode = "CLIENT_CONFIRMATION_REQUIRED",
                             CreatedAt = new DateTimeOffset(new DateTime(2026, 5, 30, 10, 30, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0)),
@@ -351,19 +317,19 @@ namespace GatewayApi.Data.Migrations
                             RecipientName = "Service Company",
                             Status = "PENDING_CONFIRMATION",
                             UpdatedAt = new DateTimeOffset(new DateTime(2026, 5, 30, 10, 30, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0)),
-                            UserId = "user_3"
+                            UserId = new Guid("33333333-3333-3333-3333-333333333333")
                         });
                 });
 
             modelBuilder.Entity("GatewayApi.Entities.SupportDecision", b =>
                 {
-                    b.Property<string>("Id")
-                        .HasColumnType("text")
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
                         .HasColumnName("id");
 
-                    b.Property<string>("CaseId")
-                        .IsRequired()
-                        .HasColumnType("text")
+                    b.Property<Guid>("CaseId")
+                        .HasColumnType("uuid")
                         .HasColumnName("case_id");
 
                     b.Property<string>("Comment")
@@ -435,9 +401,6 @@ namespace GatewayApi.Data.Migrations
                     b.Property<Guid>("IdempotencyKey")
                         .HasColumnType("uuid");
 
-                    b.Property<Guid>("MerchantId")
-                        .HasColumnType("uuid");
-
                     b.Property<string>("RawPayload")
                         .IsRequired()
                         .HasColumnType("jsonb");
@@ -449,13 +412,16 @@ namespace GatewayApi.Data.Migrations
                     b.Property<DateTime>("UpdatedAt")
                         .HasColumnType("timestamp with time zone");
 
+                    b.Property<Guid>("UserId")
+                        .HasColumnType("uuid");
+
                     b.HasKey("Id");
 
                     b.HasIndex("BankId");
 
-                    b.HasIndex("MerchantId");
+                    b.HasIndex("UserId");
 
-                    b.HasIndex("IdempotencyKey", "MerchantId")
+                    b.HasIndex("IdempotencyKey", "UserId")
                         .IsUnique();
 
                     b.ToTable("Transactions");
@@ -463,8 +429,9 @@ namespace GatewayApi.Data.Migrations
 
             modelBuilder.Entity("GatewayApi.Entities.User", b =>
                 {
-                    b.Property<string>("Id")
-                        .HasColumnType("text")
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
                         .HasColumnName("id");
 
                     b.Property<string>("AccountStatus")
@@ -472,6 +439,11 @@ namespace GatewayApi.Data.Migrations
                         .HasMaxLength(16)
                         .HasColumnType("character varying(16)")
                         .HasColumnName("account_status");
+
+                    b.Property<string>("ApiKey")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)");
 
                     b.Property<DateTimeOffset>("CreatedAt")
                         .HasColumnType("timestamp with time zone")
@@ -489,11 +461,18 @@ namespace GatewayApi.Data.Migrations
                         .HasColumnType("character varying(32)")
                         .HasColumnName("phone");
 
+                    b.Property<string>("SecretKeyHash")
+                        .IsRequired()
+                        .HasColumnType("text");
+
                     b.Property<DateTimeOffset>("UpdatedAt")
                         .HasColumnType("timestamp with time zone")
                         .HasColumnName("updated_at");
 
                     b.HasKey("Id");
+
+                    b.HasIndex("ApiKey")
+                        .IsUnique();
 
                     b.HasIndex("Phone")
                         .IsUnique();
@@ -503,29 +482,35 @@ namespace GatewayApi.Data.Migrations
                     b.HasData(
                         new
                         {
-                            Id = "user_1",
+                            Id = new Guid("11111111-1111-1111-1111-111111111111"),
                             AccountStatus = "LIMITED",
+                            ApiKey = "demo-user-1-api-key",
                             CreatedAt = new DateTimeOffset(new DateTime(2026, 5, 30, 10, 30, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0)),
                             FullName = "Andrey K.",
                             Phone = "+7 777 000 00 00",
+                            SecretKeyHash = "demo-user-1-secret-hash",
                             UpdatedAt = new DateTimeOffset(new DateTime(2026, 5, 30, 10, 30, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0))
                         },
                         new
                         {
-                            Id = "user_2",
+                            Id = new Guid("22222222-2222-2222-2222-222222222222"),
                             AccountStatus = "LIMITED",
+                            ApiKey = "demo-user-2-api-key",
                             CreatedAt = new DateTimeOffset(new DateTime(2026, 5, 30, 10, 30, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0)),
                             FullName = "Client Account Appeal",
                             Phone = "+7 777 000 00 02",
+                            SecretKeyHash = "demo-user-2-secret-hash",
                             UpdatedAt = new DateTimeOffset(new DateTime(2026, 5, 30, 10, 30, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0))
                         },
                         new
                         {
-                            Id = "user_3",
+                            Id = new Guid("33333333-3333-3333-3333-333333333333"),
                             AccountStatus = "ACTIVE",
+                            ApiKey = "demo-user-3-api-key",
                             CreatedAt = new DateTimeOffset(new DateTime(2026, 5, 30, 10, 30, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0)),
                             FullName = "Client Operation Confirmation",
                             Phone = "+7 777 000 00 03",
+                            SecretKeyHash = "demo-user-3-secret-hash",
                             UpdatedAt = new DateTimeOffset(new DateTime(2026, 5, 30, 10, 30, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0))
                         });
                 });
@@ -600,15 +585,15 @@ namespace GatewayApi.Data.Migrations
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
 
-                    b.HasOne("GatewayApi.Entities.Merchant", "Merchant")
+                    b.HasOne("GatewayApi.Entities.User", "User")
                         .WithMany("Transactions")
-                        .HasForeignKey("MerchantId")
+                        .HasForeignKey("UserId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
 
                     b.Navigation("BankAdapter");
 
-                    b.Navigation("Merchant");
+                    b.Navigation("User");
                 });
 
             modelBuilder.Entity("GatewayApi.Entities.AppealCase", b =>
@@ -625,11 +610,6 @@ namespace GatewayApi.Data.Migrations
                     b.Navigation("Transactions");
                 });
 
-            modelBuilder.Entity("GatewayApi.Entities.Merchant", b =>
-                {
-                    b.Navigation("Transactions");
-                });
-
             modelBuilder.Entity("GatewayApi.Entities.Operation", b =>
                 {
                     b.Navigation("AppealCases");
@@ -640,6 +620,8 @@ namespace GatewayApi.Data.Migrations
                     b.Navigation("AppealCases");
 
                     b.Navigation("Operations");
+
+                    b.Navigation("Transactions");
                 });
 #pragma warning restore 612, 618
         }

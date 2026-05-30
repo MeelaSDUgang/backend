@@ -5,8 +5,8 @@ namespace GatewayApi.Entities;
 public class Transaction
 {
     public Guid Id { get; set; }
-    public Guid MerchantId { get; set; }
-    public Merchant Merchant { get; set; }
+    public Guid UserId { get; set; }
+    public User User { get; set; }
     public Guid BankId { get; set; }
     public BankAdapter BankAdapter { get; set; }
     public Guid IdempotencyKey { get; set; }

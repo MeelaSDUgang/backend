@@ -12,16 +12,10 @@ builder.Services.AddDbContext<AppDbContext>(options =>
 
 builder.Services.AddScoped<HmacAuthFilter>();
 
-builder.Services.AddSingleton<IPaymentAdapter, AlphaBankAdapter>();
-builder.Services.AddSingleton<IPaymentAdapter, BetaCorporateAdapter>();
-builder.Services.AddSingleton<IPaymentAdapter, RetailPayoutAdapter>();
-builder.Services.AddSingleton<IPaymentAdapter, GlobalFinTechAdapter>();
+builder.Services.AddSingleton<IPaymentAdapter, HalykBankAdapter>();
 
 builder.Services.AddScoped<PaymentOrchestrator>();
 builder.Services.AddScoped<IdempotencyService>();
-
-builder.Services.AddHttpClient("Webhook");
-builder.Services.AddHostedService<TransactionSettlementWorker>();
 
 builder.Services.AddControllers();
 

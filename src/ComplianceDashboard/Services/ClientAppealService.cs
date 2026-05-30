@@ -10,7 +10,7 @@ namespace ComplianceDashboard.Services;
 
 public class ClientAppealService(DashboardDbContext dbContext) : IClientAppealService
 {
-    private const string DemoUserId = "user_1";
+    private static readonly Guid DemoUserId = Guid.Parse("11111111-1111-1111-1111-111111111111");
 
     public async Task<ServiceResult<UserResponse>> GetCurrentUserAsync(CancellationToken cancellationToken)
     {
@@ -50,13 +50,14 @@ public class ClientAppealService(DashboardDbContext dbContext) : IClientAppealSe
 
         if (caseType == AppealCaseType.OPERATION_CONFIRMATION)
         {
-            if (string.IsNullOrWhiteSpace(request.OperationId))
+            if (string.IsNullOrWhiteSpace(request.OperationId) ||
+                !Guid.TryParse(request.OperationId, out var operationId))
                 return ServiceResult<AppealCaseResponse>.Failure(
                     ErrorCodes.ValidationError,
-                    "operationId is required for OPERATION_CONFIRMATION.");
+                    "Valid operationId is required for OPERATION_CONFIRMATION.");
 
             operation = await dbContext.Operations
-                .FirstOrDefaultAsync(operation => operation.Id == request.OperationId, cancellationToken);
+                .FirstOrDefaultAsync(operation => operation.Id == operationId, cancellationToken);
 
             if (operation is null)
                 return ServiceResult<AppealCaseResponse>.Failure(ErrorCodes.NotFound, "Operation not found.");
@@ -70,8 +71,7 @@ public class ClientAppealService(DashboardDbContext dbContext) : IClientAppealSe
         var now = DateTime.UtcNow;
         var appealCase = new AppealCase
         {
-            Id = await GetNextIdAsync("case", dbContext.AppealCases.Select(appealCase => appealCase.Id),
-                cancellationToken),
+            Id = Guid.NewGuid(),
             UserId = userId,
             OperationId = operation?.Id,
             CaseType = caseType.ToString(),
@@ -95,7 +95,10 @@ public class ClientAppealService(DashboardDbContext dbContext) : IClientAppealSe
         string caseId,
         CancellationToken cancellationToken)
     {
-        var appealCase = await LoadFullCase(caseId).AsNoTracking().FirstOrDefaultAsync(cancellationToken);
+        if (!Guid.TryParse(caseId, out var parsedCaseId))
+            return ServiceResult<AppealCaseResponse>.Failure(ErrorCodes.NotFound, "Appeal case not found.");
+
+        var appealCase = await LoadFullCase(parsedCaseId).AsNoTracking().FirstOrDefaultAsync(cancellationToken);
 
         return appealCase is null
             ? ServiceResult<AppealCaseResponse>.Failure(ErrorCodes.NotFound, "Appeal case not found.")
@@ -107,9 +110,12 @@ public class ClientAppealService(DashboardDbContext dbContext) : IClientAppealSe
         SaveAppealAnswersRequest request,
         CancellationToken cancellationToken)
     {
+        if (!Guid.TryParse(caseId, out var parsedCaseId))
+            return ServiceResult<object>.Failure(ErrorCodes.NotFound, "Appeal case not found.");
+
         var appealCase = await dbContext.AppealCases
             .Include(appealCase => appealCase.AppealAnswers)
-            .FirstOrDefaultAsync(appealCase => appealCase.Id == caseId, cancellationToken);
+            .FirstOrDefaultAsync(appealCase => appealCase.Id == parsedCaseId, cancellationToken);
 
         if (appealCase is null) return ServiceResult<object>.Failure(ErrorCodes.NotFound, "Appeal case not found.");
 
@@ -129,13 +135,11 @@ public class ClientAppealService(DashboardDbContext dbContext) : IClientAppealSe
 
         dbContext.AppealAnswers.RemoveRange(appealCase.AppealAnswers);
         var now = DateTime.UtcNow;
-        var nextAnswerNumber = await GetNextNumberAsync(dbContext.AppealAnswers.Select(answer => answer.Id), "answer",
-            cancellationToken);
 
         foreach (var answer in request.Answers)
             dbContext.AppealAnswers.Add(new AppealAnswer
             {
-                Id = $"answer_{nextAnswerNumber++}",
+                Id = Guid.NewGuid(),
                 CaseId = appealCase.Id,
                 QuestionKey = answer.QuestionKey.Trim(),
                 QuestionText = answer.QuestionText.Trim(),
@@ -154,8 +158,11 @@ public class ClientAppealService(DashboardDbContext dbContext) : IClientAppealSe
         AddAppealDocumentRequest request,
         CancellationToken cancellationToken)
     {
+        if (!Guid.TryParse(caseId, out var parsedCaseId))
+            return ServiceResult<AppealDocumentResponse>.Failure(ErrorCodes.NotFound, "Appeal case not found.");
+
         var appealCase = await dbContext.AppealCases
-            .FirstOrDefaultAsync(appealCase => appealCase.Id == caseId, cancellationToken);
+            .FirstOrDefaultAsync(appealCase => appealCase.Id == parsedCaseId, cancellationToken);
 
         if (appealCase is null)
             return ServiceResult<AppealDocumentResponse>.Failure(ErrorCodes.NotFound, "Appeal case not found.");
@@ -173,8 +180,7 @@ public class ClientAppealService(DashboardDbContext dbContext) : IClientAppealSe
         var now = DateTime.UtcNow;
         var document = new AppealDocument
         {
-            Id = await GetNextIdAsync("doc", dbContext.AppealDocuments.Select(document => document.Id),
-                cancellationToken),
+            Id = Guid.NewGuid(),
             CaseId = appealCase.Id,
             DocumentType = documentType.ToString(),
             FileName = request.FileName.Trim(),
@@ -193,7 +199,10 @@ public class ClientAppealService(DashboardDbContext dbContext) : IClientAppealSe
         string caseId,
         CancellationToken cancellationToken)
     {
-        var appealCase = await LoadFullCase(caseId).FirstOrDefaultAsync(cancellationToken);
+        if (!Guid.TryParse(caseId, out var parsedCaseId))
+            return ServiceResult<GenerateSupportSummaryResponse>.Failure(ErrorCodes.NotFound, "Appeal case not found.");
+
+        var appealCase = await LoadFullCase(parsedCaseId).FirstOrDefaultAsync(cancellationToken);
         if (appealCase is null)
             return ServiceResult<GenerateSupportSummaryResponse>.Failure(ErrorCodes.NotFound, "Appeal case not found.");
 
@@ -224,7 +233,7 @@ public class ClientAppealService(DashboardDbContext dbContext) : IClientAppealSe
 
         return ServiceResult<GenerateSupportSummaryResponse>.Success(
             new GenerateSupportSummaryResponse(
-                appealCase.Id,
+                appealCase.Id.ToString(),
                 appealCase.Status,
                 appealCase.RouteTo,
                 supportSummary,
@@ -232,7 +241,7 @@ public class ClientAppealService(DashboardDbContext dbContext) : IClientAppealSe
                 clientMessage));
     }
 
-    private IQueryable<AppealCase> LoadFullCase(string caseId)
+    private IQueryable<AppealCase> LoadFullCase(Guid caseId)
     {
         return dbContext.AppealCases
             .Include(appealCase => appealCase.User)
@@ -324,41 +333,6 @@ public class ClientAppealService(DashboardDbContext dbContext) : IClientAppealSe
         where TEnum : struct, Enum
     {
         return Enum.TryParse(value, false, out result) && Enum.IsDefined(result);
-    }
-
-    private static async Task<string> GetNextIdAsync(
-        string prefix,
-        IQueryable<string> ids,
-        CancellationToken cancellationToken)
-    {
-        var nextNumber = await GetNextNumberAsync(ids, prefix, cancellationToken);
-        return $"{prefix}_{nextNumber}";
-    }
-
-    private static async Task<int> GetNextNumberAsync(
-        IQueryable<string> ids,
-        string prefix,
-        CancellationToken cancellationToken)
-    {
-        var values = await ids.ToListAsync(cancellationToken);
-        var usedNumbers = values
-            .Select(id => TryReadSuffixedNumber(id, prefix))
-            .Where(number => number > 0)
-            .ToHashSet();
-
-        var nextNumber = 1;
-        while (usedNumbers.Contains(nextNumber)) nextNumber++;
-
-        return nextNumber;
-    }
-
-    private static int TryReadSuffixedNumber(string id, string prefix)
-    {
-        var expectedPrefix = $"{prefix}_";
-        return id.StartsWith(expectedPrefix, StringComparison.OrdinalIgnoreCase) &&
-               int.TryParse(id[expectedPrefix.Length..], out var number)
-            ? number
-            : 0;
     }
 
     private static string FormatAmount(decimal amount)

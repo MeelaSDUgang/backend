@@ -4,9 +4,9 @@ namespace GatewayApi.Entities;
 
 public class SupportDecision
 {
-    public string Id { get; set; } = Guid.NewGuid().ToString("N");
+    public Guid Id { get; set; }
 
-    public string CaseId { get; set; } = string.Empty;
+    public Guid CaseId { get; set; }
 
     public AppealCase Case { get; set; } = null!;
 

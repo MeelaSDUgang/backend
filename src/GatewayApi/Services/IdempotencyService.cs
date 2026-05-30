@@ -15,13 +15,13 @@ public class IdempotencyService
         _logger = logger;
     }
 
-    public async Task<PaymentResponse?> CheckAsync(Guid idempotencyKey, Guid merchantId, CancellationToken ct = default)
+    public async Task<PaymentResponse?> CheckAsync(Guid idempotencyKey, Guid userId, CancellationToken ct = default)
     {
         var existing = await _db.Transactions
             .AsNoTracking()
             .FirstOrDefaultAsync(t =>
                     t.IdempotencyKey == idempotencyKey &&
-                    t.MerchantId == merchantId,
+                    t.UserId == userId,
                 ct);
 
         if (existing is null)

@@ -4,9 +4,9 @@ namespace GatewayApi.Entities;
 
 public class Operation
 {
-    public string Id { get; set; } = Guid.NewGuid().ToString("N");
+    public Guid Id { get; set; }
 
-    public string UserId { get; set; } = string.Empty;
+    public Guid UserId { get; set; }
 
     public User User { get; set; } = null!;
 

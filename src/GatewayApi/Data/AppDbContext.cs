@@ -7,6 +7,13 @@ namespace GatewayApi.Data;
 public class AppDbContext : DbContext
 {
     private static readonly DateTimeOffset SeedCreatedAt = new(2026, 5, 30, 10, 30, 0, TimeSpan.Zero);
+    private static readonly Guid SeedUser1Id = Guid.Parse("11111111-1111-1111-1111-111111111111");
+    private static readonly Guid SeedUser2Id = Guid.Parse("22222222-2222-2222-2222-222222222222");
+    private static readonly Guid SeedUser3Id = Guid.Parse("33333333-3333-3333-3333-333333333333");
+    private static readonly Guid SeedOperation1Id = Guid.Parse("aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaa1");
+    private static readonly Guid SeedOperation3Id = Guid.Parse("aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaa3");
+    private static readonly Guid SeedCase2Id = Guid.Parse("cccccccc-cccc-cccc-cccc-ccccccccccc2");
+    private static readonly Guid SeedCase3Id = Guid.Parse("cccccccc-cccc-cccc-cccc-ccccccccccc3");
 
     public AppDbContext(DbContextOptions<AppDbContext> options) : base(options)
     {
@@ -24,16 +31,15 @@ public class AppDbContext : DbContext
 
     public DbSet<SupportDecision> SupportDecisions => Set<SupportDecision>();
 
-    public DbSet<Merchant> Merchants { get; set; }
     public DbSet<BankAdapter> BankAdapters { get; set; }
     public DbSet<Transaction> Transactions { get; set; }
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
-        modelBuilder.Entity<Merchant>(entity =>
+        modelBuilder.Entity<User>(entity =>
         {
             entity.HasKey(m => m.Id);
-            entity.Property(m => m.Name).IsRequired().HasMaxLength(200);
+            entity.Property(m => m.FullName).IsRequired().HasMaxLength(200);
 
             entity.HasIndex(m => m.ApiKey).IsUnique();
             entity.Property(m => m.ApiKey).IsRequired().HasMaxLength(100);
@@ -54,7 +60,7 @@ public class AppDbContext : DbContext
             entity.Property(t => t.Amount).HasPrecision(18, 2);
             entity.Property(t => t.Currency).HasMaxLength(3);
 
-            entity.HasIndex(t => new { t.IdempotencyKey, t.MerchantId }).IsUnique();
+            entity.HasIndex(t => new { t.IdempotencyKey, t.UserId }).IsUnique();
 
             entity.Property(t => t.GatewayType)
                 .HasConversion<string>();
@@ -71,9 +77,9 @@ public class AppDbContext : DbContext
             entity.Property(t => t.FailureReason)
                 .HasMaxLength(500);
 
-            entity.HasOne(t => t.Merchant)
+            entity.HasOne(t => t.User)
                 .WithMany(m => m.Transactions)
-                .HasForeignKey(t => t.MerchantId)
+                .HasForeignKey(t => t.UserId)
                 .OnDelete(DeleteBehavior.Restrict);
 
             entity.HasOne(t => t.BankAdapter)
@@ -337,27 +343,33 @@ public class AppDbContext : DbContext
         builder.Entity<User>().HasData(
             new
             {
-                Id = "user_1",
+                Id = SeedUser1Id,
                 FullName = "Andrey K.",
                 Phone = "+7 777 000 00 00",
+                ApiKey = "demo-user-1-api-key",
+                SecretKeyHash = "demo-user-1-secret-hash",
                 AccountStatus = AccountStatus.LIMITED,
                 CreatedAt = SeedCreatedAt,
                 UpdatedAt = SeedCreatedAt
             },
             new
             {
-                Id = "user_2",
+                Id = SeedUser2Id,
                 FullName = "Client Account Appeal",
                 Phone = "+7 777 000 00 02",
+                ApiKey = "demo-user-2-api-key",
+                SecretKeyHash = "demo-user-2-secret-hash",
                 AccountStatus = AccountStatus.LIMITED,
                 CreatedAt = SeedCreatedAt,
                 UpdatedAt = SeedCreatedAt
             },
             new
             {
-                Id = "user_3",
+                Id = SeedUser3Id,
                 FullName = "Client Operation Confirmation",
                 Phone = "+7 777 000 00 03",
+                ApiKey = "demo-user-3-api-key",
+                SecretKeyHash = "demo-user-3-secret-hash",
                 AccountStatus = AccountStatus.ACTIVE,
                 CreatedAt = SeedCreatedAt,
                 UpdatedAt = SeedCreatedAt
@@ -366,8 +378,8 @@ public class AppDbContext : DbContext
         builder.Entity<Operation>().HasData(
             new
             {
-                Id = "op_1",
-                UserId = "user_1",
+                Id = SeedOperation1Id,
+                UserId = SeedUser1Id,
                 Amount = 250000m,
                 Currency = Currency.KZT,
                 RecipientName = "Alisher M.",
@@ -379,8 +391,8 @@ public class AppDbContext : DbContext
             },
             new
             {
-                Id = "op_3",
-                UserId = "user_3",
+                Id = SeedOperation3Id,
+                UserId = SeedUser3Id,
                 Amount = 45000m,
                 Currency = Currency.KZT,
                 RecipientName = "Service Company",
@@ -394,9 +406,9 @@ public class AppDbContext : DbContext
         builder.Entity<AppealCase>().HasData(
             new
             {
-                Id = "case_2",
-                UserId = "user_2",
-                OperationId = (string?)null,
+                Id = SeedCase2Id,
+                UserId = SeedUser2Id,
+                OperationId = (Guid?)null,
                 CaseType = AppealCaseType.ACCOUNT_BLOCK_APPEAL,
                 Status = AppealCaseStatus.NEED_MORE_INFO,
                 SupportSummary =
@@ -410,9 +422,9 @@ public class AppDbContext : DbContext
             },
             new
             {
-                Id = "case_3",
-                UserId = "user_3",
-                OperationId = "op_3",
+                Id = SeedCase3Id,
+                UserId = SeedUser3Id,
+                OperationId = (Guid?)SeedOperation3Id,
                 CaseType = AppealCaseType.OPERATION_CONFIRMATION,
                 Status = AppealCaseStatus.SUBMITTED,
                 SupportSummary =

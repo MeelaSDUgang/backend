@@ -2,9 +2,9 @@
 
 public class SupportDecision
 {
-    public string Id { get; set; } = null!;
+    public Guid Id { get; set; }
 
-    public string CaseId { get; set; } = null!;
+    public Guid CaseId { get; set; }
 
     public string Decision { get; set; } = null!;
 

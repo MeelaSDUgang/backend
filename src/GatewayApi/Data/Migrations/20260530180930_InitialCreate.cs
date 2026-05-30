@@ -29,28 +29,14 @@ namespace GatewayApi.Data.Migrations
                 });
 
             migrationBuilder.CreateTable(
-                name: "Merchants",
-                columns: table => new
-                {
-                    Id = table.Column<Guid>(type: "uuid", nullable: false),
-                    Name = table.Column<string>(type: "character varying(200)", maxLength: 200, nullable: false),
-                    ApiKey = table.Column<string>(type: "character varying(100)", maxLength: 100, nullable: false),
-                    SecretKeyHash = table.Column<string>(type: "text", nullable: false),
-                    WebhookUrl = table.Column<string>(type: "text", nullable: true),
-                    CreatedAt = table.Column<DateTime>(type: "timestamp with time zone", nullable: false)
-                },
-                constraints: table =>
-                {
-                    table.PrimaryKey("PK_Merchants", x => x.Id);
-                });
-
-            migrationBuilder.CreateTable(
                 name: "users",
                 columns: table => new
                 {
-                    id = table.Column<string>(type: "text", nullable: false),
+                    id = table.Column<Guid>(type: "uuid", nullable: false),
                     full_name = table.Column<string>(type: "character varying(200)", maxLength: 200, nullable: false),
                     phone = table.Column<string>(type: "character varying(32)", maxLength: 32, nullable: false),
+                    ApiKey = table.Column<string>(type: "character varying(100)", maxLength: 100, nullable: false),
+                    SecretKeyHash = table.Column<string>(type: "text", nullable: false),
                     account_status = table.Column<string>(type: "character varying(16)", maxLength: 16, nullable: false),
                     created_at = table.Column<DateTimeOffset>(type: "timestamp with time zone", nullable: false),
                     updated_at = table.Column<DateTimeOffset>(type: "timestamp with time zone", nullable: false)
@@ -61,11 +47,37 @@ namespace GatewayApi.Data.Migrations
                 });
 
             migrationBuilder.CreateTable(
+                name: "operations",
+                columns: table => new
+                {
+                    id = table.Column<Guid>(type: "uuid", nullable: false),
+                    user_id = table.Column<Guid>(type: "uuid", nullable: false),
+                    amount = table.Column<decimal>(type: "numeric(18,2)", precision: 18, scale: 2, nullable: false),
+                    currency = table.Column<string>(type: "character varying(3)", maxLength: 3, nullable: false),
+                    recipient_name = table.Column<string>(type: "character varying(200)", maxLength: 200, nullable: false),
+                    recipient_account = table.Column<string>(type: "character varying(64)", maxLength: 64, nullable: true),
+                    status = table.Column<string>(type: "character varying(32)", maxLength: 32, nullable: false),
+                    block_reason_code = table.Column<string>(type: "character varying(64)", maxLength: 64, nullable: false),
+                    created_at = table.Column<DateTimeOffset>(type: "timestamp with time zone", nullable: false),
+                    updated_at = table.Column<DateTimeOffset>(type: "timestamp with time zone", nullable: false)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_operations", x => x.id);
+                    table.ForeignKey(
+                        name: "FK_operations_users_user_id",
+                        column: x => x.user_id,
+                        principalTable: "users",
+                        principalColumn: "id",
+                        onDelete: ReferentialAction.Restrict);
+                });
+
+            migrationBuilder.CreateTable(
                 name: "Transactions",
                 columns: table => new
                 {
                     Id = table.Column<Guid>(type: "uuid", nullable: false),
-                    MerchantId = table.Column<Guid>(type: "uuid", nullable: false),
+                    UserId = table.Column<Guid>(type: "uuid", nullable: false),
                     BankId = table.Column<Guid>(type: "uuid", nullable: false),
                     IdempotencyKey = table.Column<Guid>(type: "uuid", nullable: false),
                     Account = table.Column<string>(type: "text", nullable: false),
@@ -91,34 +103,8 @@ namespace GatewayApi.Data.Migrations
                         principalColumn: "Id",
                         onDelete: ReferentialAction.Restrict);
                     table.ForeignKey(
-                        name: "FK_Transactions_Merchants_MerchantId",
-                        column: x => x.MerchantId,
-                        principalTable: "Merchants",
-                        principalColumn: "Id",
-                        onDelete: ReferentialAction.Restrict);
-                });
-
-            migrationBuilder.CreateTable(
-                name: "operations",
-                columns: table => new
-                {
-                    id = table.Column<string>(type: "text", nullable: false),
-                    user_id = table.Column<string>(type: "text", nullable: false),
-                    amount = table.Column<decimal>(type: "numeric(18,2)", precision: 18, scale: 2, nullable: false),
-                    currency = table.Column<string>(type: "character varying(3)", maxLength: 3, nullable: false),
-                    recipient_name = table.Column<string>(type: "character varying(200)", maxLength: 200, nullable: false),
-                    recipient_account = table.Column<string>(type: "character varying(64)", maxLength: 64, nullable: true),
-                    status = table.Column<string>(type: "character varying(32)", maxLength: 32, nullable: false),
-                    block_reason_code = table.Column<string>(type: "character varying(64)", maxLength: 64, nullable: false),
-                    created_at = table.Column<DateTimeOffset>(type: "timestamp with time zone", nullable: false),
-                    updated_at = table.Column<DateTimeOffset>(type: "timestamp with time zone", nullable: false)
-                },
-                constraints: table =>
-                {
-                    table.PrimaryKey("PK_operations", x => x.id);
-                    table.ForeignKey(
-                        name: "FK_operations_users_user_id",
-                        column: x => x.user_id,
+                        name: "FK_Transactions_users_UserId",
+                        column: x => x.UserId,
                         principalTable: "users",
                         principalColumn: "id",
                         onDelete: ReferentialAction.Restrict);
@@ -128,9 +114,9 @@ namespace GatewayApi.Data.Migrations
                 name: "appeal_cases",
                 columns: table => new
                 {
-                    id = table.Column<string>(type: "text", nullable: false),
-                    user_id = table.Column<string>(type: "text", nullable: false),
-                    operation_id = table.Column<string>(type: "text", nullable: true),
+                    id = table.Column<Guid>(type: "uuid", nullable: false),
+                    user_id = table.Column<Guid>(type: "uuid", nullable: false),
+                    operation_id = table.Column<Guid>(type: "uuid", nullable: true),
                     case_type = table.Column<string>(type: "character varying(32)", maxLength: 32, nullable: false),
                     status = table.Column<string>(type: "character varying(32)", maxLength: 32, nullable: false),
                     support_summary = table.Column<string>(type: "character varying(4000)", maxLength: 4000, nullable: true),
@@ -161,8 +147,8 @@ namespace GatewayApi.Data.Migrations
                 name: "appeal_answers",
                 columns: table => new
                 {
-                    id = table.Column<string>(type: "text", nullable: false),
-                    case_id = table.Column<string>(type: "text", nullable: false),
+                    id = table.Column<Guid>(type: "uuid", nullable: false),
+                    case_id = table.Column<Guid>(type: "uuid", nullable: false),
                     question_key = table.Column<string>(type: "character varying(128)", maxLength: 128, nullable: false),
                     question_text = table.Column<string>(type: "character varying(1000)", maxLength: 1000, nullable: false),
                     answer = table.Column<string>(type: "character varying(4000)", maxLength: 4000, nullable: false),
@@ -183,8 +169,8 @@ namespace GatewayApi.Data.Migrations
                 name: "appeal_documents",
                 columns: table => new
                 {
-                    id = table.Column<string>(type: "text", nullable: false),
-                    case_id = table.Column<string>(type: "text", nullable: false),
+                    id = table.Column<Guid>(type: "uuid", nullable: false),
+                    case_id = table.Column<Guid>(type: "uuid", nullable: false),
                     document_type = table.Column<string>(type: "character varying(32)", maxLength: 32, nullable: false),
                     file_name = table.Column<string>(type: "character varying(255)", maxLength: 255, nullable: false),
                     mock_url = table.Column<string>(type: "character varying(2048)", maxLength: 2048, nullable: true),
@@ -205,8 +191,8 @@ namespace GatewayApi.Data.Migrations
                 name: "support_decisions",
                 columns: table => new
                 {
-                    id = table.Column<string>(type: "text", nullable: false),
-                    case_id = table.Column<string>(type: "text", nullable: false),
+                    id = table.Column<Guid>(type: "uuid", nullable: false),
+                    case_id = table.Column<Guid>(type: "uuid", nullable: false),
                     decision = table.Column<string>(type: "character varying(32)", maxLength: 32, nullable: false),
                     comment = table.Column<string>(type: "character varying(2000)", maxLength: 2000, nullable: true),
                     created_at = table.Column<DateTimeOffset>(type: "timestamp with time zone", nullable: false)
@@ -224,32 +210,32 @@ namespace GatewayApi.Data.Migrations
 
             migrationBuilder.InsertData(
                 table: "users",
-                columns: new[] { "id", "account_status", "created_at", "full_name", "phone", "updated_at" },
+                columns: new[] { "id", "account_status", "ApiKey", "created_at", "full_name", "phone", "SecretKeyHash", "updated_at" },
                 values: new object[,]
                 {
-                    { "user_1", "LIMITED", new DateTimeOffset(new DateTime(2026, 5, 30, 10, 30, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0)), "Andrey K.", "+7 777 000 00 00", new DateTimeOffset(new DateTime(2026, 5, 30, 10, 30, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0)) },
-                    { "user_2", "LIMITED", new DateTimeOffset(new DateTime(2026, 5, 30, 10, 30, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0)), "Client Account Appeal", "+7 777 000 00 02", new DateTimeOffset(new DateTime(2026, 5, 30, 10, 30, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0)) },
-                    { "user_3", "ACTIVE", new DateTimeOffset(new DateTime(2026, 5, 30, 10, 30, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0)), "Client Operation Confirmation", "+7 777 000 00 03", new DateTimeOffset(new DateTime(2026, 5, 30, 10, 30, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0)) }
+                    { new Guid("11111111-1111-1111-1111-111111111111"), "LIMITED", "demo-user-1-api-key", new DateTimeOffset(new DateTime(2026, 5, 30, 10, 30, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0)), "Andrey K.", "+7 777 000 00 00", "demo-user-1-secret-hash", new DateTimeOffset(new DateTime(2026, 5, 30, 10, 30, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0)) },
+                    { new Guid("22222222-2222-2222-2222-222222222222"), "LIMITED", "demo-user-2-api-key", new DateTimeOffset(new DateTime(2026, 5, 30, 10, 30, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0)), "Client Account Appeal", "+7 777 000 00 02", "demo-user-2-secret-hash", new DateTimeOffset(new DateTime(2026, 5, 30, 10, 30, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0)) },
+                    { new Guid("33333333-3333-3333-3333-333333333333"), "ACTIVE", "demo-user-3-api-key", new DateTimeOffset(new DateTime(2026, 5, 30, 10, 30, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0)), "Client Operation Confirmation", "+7 777 000 00 03", "demo-user-3-secret-hash", new DateTimeOffset(new DateTime(2026, 5, 30, 10, 30, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0)) }
                 });
 
             migrationBuilder.InsertData(
                 table: "appeal_cases",
                 columns: new[] { "id", "case_type", "client_message", "created_at", "missing_info_json", "operation_id", "route_to", "status", "support_summary", "updated_at", "user_id" },
-                values: new object[] { "case_2", "ACCOUNT_BLOCK_APPEAL", null, new DateTimeOffset(new DateTime(2026, 5, 30, 10, 30, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0)), "[\"Source of funds confirmation is required\", \"Purpose of incoming transfers is required\"]", null, "COMPLIANCE", "NEED_MORE_INFO", "Client reported account restriction after several incoming transfers. Supporting documents are not attached yet.", new DateTimeOffset(new DateTime(2026, 5, 30, 10, 30, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0)), "user_2" });
+                values: new object[] { new Guid("cccccccc-cccc-cccc-cccc-ccccccccccc2"), "ACCOUNT_BLOCK_APPEAL", null, new DateTimeOffset(new DateTime(2026, 5, 30, 10, 30, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0)), "[\"Source of funds confirmation is required\", \"Purpose of incoming transfers is required\"]", null, "COMPLIANCE", "NEED_MORE_INFO", "Client reported account restriction after several incoming transfers. Supporting documents are not attached yet.", new DateTimeOffset(new DateTime(2026, 5, 30, 10, 30, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0)), new Guid("22222222-2222-2222-2222-222222222222") });
 
             migrationBuilder.InsertData(
                 table: "operations",
                 columns: new[] { "id", "amount", "block_reason_code", "created_at", "currency", "recipient_account", "recipient_name", "status", "updated_at", "user_id" },
                 values: new object[,]
                 {
-                    { "op_1", 250000m, "CLIENT_CONFIRMATION_REQUIRED", new DateTimeOffset(new DateTime(2026, 5, 30, 10, 30, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0)), "KZT", "KZ00 **** **** 1234", "Alisher M.", "PENDING_CONFIRMATION", new DateTimeOffset(new DateTime(2026, 5, 30, 10, 30, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0)), "user_1" },
-                    { "op_3", 45000m, "CLIENT_CONFIRMATION_REQUIRED", new DateTimeOffset(new DateTime(2026, 5, 30, 10, 30, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0)), "KZT", "KZ00 **** **** 9876", "Service Company", "PENDING_CONFIRMATION", new DateTimeOffset(new DateTime(2026, 5, 30, 10, 30, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0)), "user_3" }
+                    { new Guid("aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaa1"), 250000m, "CLIENT_CONFIRMATION_REQUIRED", new DateTimeOffset(new DateTime(2026, 5, 30, 10, 30, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0)), "KZT", "KZ00 **** **** 1234", "Alisher M.", "PENDING_CONFIRMATION", new DateTimeOffset(new DateTime(2026, 5, 30, 10, 30, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0)), new Guid("11111111-1111-1111-1111-111111111111") },
+                    { new Guid("aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaa3"), 45000m, "CLIENT_CONFIRMATION_REQUIRED", new DateTimeOffset(new DateTime(2026, 5, 30, 10, 30, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0)), "KZT", "KZ00 **** **** 9876", "Service Company", "PENDING_CONFIRMATION", new DateTimeOffset(new DateTime(2026, 5, 30, 10, 30, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0)), new Guid("33333333-3333-3333-3333-333333333333") }
                 });
 
             migrationBuilder.InsertData(
                 table: "appeal_cases",
                 columns: new[] { "id", "case_type", "client_message", "created_at", "missing_info_json", "operation_id", "route_to", "status", "support_summary", "updated_at", "user_id" },
-                values: new object[] { "case_3", "OPERATION_CONFIRMATION", null, new DateTimeOffset(new DateTime(2026, 5, 30, 10, 30, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0)), "[]", "op_3", "SUPPORT", "SUBMITTED", "Client confirmed service payment. Recipient is a company/service. Payment check is attached.", new DateTimeOffset(new DateTime(2026, 5, 30, 10, 30, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0)), "user_3" });
+                values: new object[] { new Guid("cccccccc-cccc-cccc-cccc-ccccccccccc3"), "OPERATION_CONFIRMATION", null, new DateTimeOffset(new DateTime(2026, 5, 30, 10, 30, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0)), "[]", new Guid("aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaa3"), "SUPPORT", "SUBMITTED", "Client confirmed service payment. Recipient is a company/service. Payment check is attached.", new DateTimeOffset(new DateTime(2026, 5, 30, 10, 30, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0)), new Guid("33333333-3333-3333-3333-333333333333") });
 
             migrationBuilder.CreateIndex(
                 name: "IX_appeal_answers_case_id",
@@ -288,12 +274,6 @@ namespace GatewayApi.Data.Migrations
                 column: "case_id");
 
             migrationBuilder.CreateIndex(
-                name: "IX_Merchants_ApiKey",
-                table: "Merchants",
-                column: "ApiKey",
-                unique: true);
-
-            migrationBuilder.CreateIndex(
                 name: "IX_operations_status",
                 table: "operations",
                 column: "status");
@@ -314,15 +294,21 @@ namespace GatewayApi.Data.Migrations
                 column: "BankId");
 
             migrationBuilder.CreateIndex(
-                name: "IX_Transactions_IdempotencyKey_MerchantId",
+                name: "IX_Transactions_IdempotencyKey_UserId",
                 table: "Transactions",
-                columns: new[] { "IdempotencyKey", "MerchantId" },
+                columns: new[] { "IdempotencyKey", "UserId" },
                 unique: true);
 
             migrationBuilder.CreateIndex(
-                name: "IX_Transactions_MerchantId",
+                name: "IX_Transactions_UserId",
                 table: "Transactions",
-                column: "MerchantId");
+                column: "UserId");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_users_ApiKey",
+                table: "users",
+                column: "ApiKey",
+                unique: true);
 
             migrationBuilder.CreateIndex(
                 name: "IX_users_phone",
@@ -351,9 +337,6 @@ namespace GatewayApi.Data.Migrations
 
             migrationBuilder.DropTable(
                 name: "BankAdapters");
-
-            migrationBuilder.DropTable(
-                name: "Merchants");
 
             migrationBuilder.DropTable(
                 name: "operations");

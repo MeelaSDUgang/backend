@@ -8,14 +8,14 @@ internal static class ResponseMapper
 {
     public static UserResponse ToResponse(User user)
     {
-        return new UserResponse(user.Id, user.FullName, user.Phone, user.AccountStatus);
+        return new UserResponse(user.Id.ToString(), user.FullName, user.Phone, user.AccountStatus);
     }
 
     public static OperationResponse ToResponse(Operation operation)
     {
         return new OperationResponse(
-            operation.Id,
-            operation.UserId,
+            operation.Id.ToString(),
+            operation.UserId.ToString(),
             operation.Amount,
             operation.Currency,
             operation.RecipientName,
@@ -28,8 +28,8 @@ internal static class ResponseMapper
     public static AppealAnswerResponse ToResponse(AppealAnswer answer)
     {
         return new AppealAnswerResponse(
-            answer.Id,
-            answer.CaseId,
+            answer.Id.ToString(),
+            answer.CaseId.ToString(),
             answer.QuestionKey,
             answer.QuestionText,
             answer.Answer,
@@ -39,8 +39,8 @@ internal static class ResponseMapper
     public static AppealDocumentResponse ToResponse(AppealDocument document)
     {
         return new AppealDocumentResponse(
-            document.Id,
-            document.CaseId,
+            document.Id.ToString(),
+            document.CaseId.ToString(),
             document.DocumentType,
             document.FileName,
             document.MockUrl,
@@ -50,8 +50,8 @@ internal static class ResponseMapper
     public static SupportDecisionResponse ToResponse(SupportDecision decision)
     {
         return new SupportDecisionResponse(
-            decision.Id,
-            decision.CaseId,
+            decision.Id.ToString(),
+            decision.CaseId.ToString(),
             decision.Decision,
             decision.Comment,
             decision.CreatedAt);
@@ -60,9 +60,9 @@ internal static class ResponseMapper
     public static AppealCaseResponse ToResponse(AppealCase appealCase, bool includeNestedData = true)
     {
         return new AppealCaseResponse(
-            appealCase.Id,
-            appealCase.UserId,
-            appealCase.OperationId,
+            appealCase.Id.ToString(),
+            appealCase.UserId.ToString(),
+            appealCase.OperationId?.ToString(),
             appealCase.CaseType,
             appealCase.Status,
             appealCase.RouteTo,

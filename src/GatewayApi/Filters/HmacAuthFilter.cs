@@ -40,17 +40,17 @@ public class HmacAuthFilter(AppDbContext db) : IAsyncAuthorizationFilter
 
         request.Body.Position = 0;
 
-        var merchant = await db.Merchants
+        var user = await db.Users
             .AsNoTracking()
             .FirstOrDefaultAsync(m => m.ApiKey == apiKey.ToString());
 
-        if (merchant == null)
+        if (user == null)
         {
             context.Result = new UnauthorizedResult();
             return;
         }
 
-        var serverSignature = SecurityHelper.ComputeHmacSignature($"{body}{timestampStr}", merchant.SecretKeyHash);
+        var serverSignature = SecurityHelper.ComputeHmacSignature($"{body}{timestampStr}", user.SecretKeyHash);
 
         if (serverSignature != signature)
         {
@@ -58,6 +58,6 @@ public class HmacAuthFilter(AppDbContext db) : IAsyncAuthorizationFilter
             return;
         }
 
-        context.HttpContext.Items["Merchant"] = merchant;
+        context.HttpContext.Items["User"] = user;
     }
 }

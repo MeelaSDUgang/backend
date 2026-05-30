@@ -2,11 +2,11 @@
 
 public class AppealCase
 {
-    public string Id { get; set; } = null!;
+    public Guid Id { get; set; }
 
-    public string UserId { get; set; } = null!;
+    public Guid UserId { get; set; }
 
-    public string? OperationId { get; set; }
+    public Guid? OperationId { get; set; }
 
     public string CaseType { get; set; } = null!;
 

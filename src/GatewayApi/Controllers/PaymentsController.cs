@@ -33,24 +33,6 @@ public class PaymentsController : ControllerBase
         _logger = logger;
     }
 
-    [HttpPost("a2a")]
-    public async Task<IActionResult> ProcessA2A([FromBody] A2ARequest request, CancellationToken ct)
-    {
-        return await ProcessPayment(request.BankId, request.Amount, request.Currency, GatewayType.A2A, request, ct);
-    }
-
-    [HttpPost("b2b")]
-    public async Task<IActionResult> ProcessB2B([FromBody] B2BRequest request, CancellationToken ct)
-    {
-        return await ProcessPayment(request.BankId, request.Amount, request.Currency, GatewayType.B2B, request, ct);
-    }
-
-    [HttpPost("b2c")]
-    public async Task<IActionResult> ProcessB2C([FromBody] PayoutRequest request, CancellationToken ct)
-    {
-        return await ProcessPayment(request.BankId, request.Amount, request.Currency, GatewayType.B2C, request, ct);
-    }
-
     [HttpPost("p2p")]
     public async Task<IActionResult> ProcessP2P([FromBody] P2PRequest request, CancellationToken ct)
     {
@@ -60,11 +42,11 @@ public class PaymentsController : ControllerBase
     [HttpGet("{transactionId:guid}")]
     public async Task<IActionResult> GetTransactionStatus(Guid transactionId, CancellationToken ct)
     {
-        var merchant = GetMerchant();
+        var getUser = GetUser();
 
         var tx = await _db.Transactions
             .AsNoTracking()
-            .FirstOrDefaultAsync(t => t.Id == transactionId && t.MerchantId == merchant.Id, ct);
+            .FirstOrDefaultAsync(t => t.Id == transactionId && t.UserId == getUser.Id, ct);
 
         if (tx is null)
             return NotFound(new ErrorResponse("Transaction not found"));
@@ -88,7 +70,7 @@ public class PaymentsController : ControllerBase
         string bankIdStr, decimal amount, string currency,
         GatewayType gatewayType, TRequest request, CancellationToken ct)
     {
-        var merchant = GetMerchant();
+        var user = GetUser();
 
         if (!Request.Headers.TryGetValue("Idempotency-Key", out var idempotencyHeader) ||
             !Guid.TryParse(idempotencyHeader, out var idempotencyKey))
@@ -96,7 +78,7 @@ public class PaymentsController : ControllerBase
                 "Missing or invalid Idempotency-Key header",
                 "Must be a valid UUID"));
 
-        var cached = await _idempotency.CheckAsync(idempotencyKey, merchant.Id, ct);
+        var cached = await _idempotency.CheckAsync(idempotencyKey, user.Id, ct);
         if (cached is not null)
         {
             Response.Headers["X-Correlation-Id"] = cached.TransactionId;
@@ -123,7 +105,7 @@ public class PaymentsController : ControllerBase
             WriteIndented = false
         });
 
-        var riskScore = 100;
+        var riskScore = 0;
         var reason = "hui";
 
         var fraudResult = false;
@@ -132,13 +114,13 @@ public class PaymentsController : ControllerBase
         {
             _logger.LogWarning(
                 "FRAUD BLOCKED — {Type} {Amount} {Currency} for {Merchant}: score={Score}, reason={Reason}",
-                gatewayType, amount, currency, merchant.Name,
+                gatewayType, amount, currency, user.FullName,
                 riskScore, reason);
 
             var rejectedTx = new Transaction
             {
                 Id = Guid.NewGuid(),
-                MerchantId = merchant.Id,
+                UserId = user.Id,
                 BankId = bankId,
                 IdempotencyKey = idempotencyKey,
                 Account = ExtractAccountIdentifier(request),
@@ -169,7 +151,7 @@ public class PaymentsController : ControllerBase
         var transaction = new Transaction
         {
             Id = Guid.NewGuid(),
-            MerchantId = merchant.Id,
+            UserId = user.Id,
             BankId = bankId,
             IdempotencyKey = idempotencyKey,
             Account = ExtractAccountIdentifier(request),
@@ -189,7 +171,7 @@ public class PaymentsController : ControllerBase
 
         _logger.LogInformation(
             "Tx {TxId} CREATED — {Type} for {MerchantName} ({Amount} {Currency}), fraudScore={FraudScore}",
-            transaction.Id, gatewayType, merchant.Name, amount, currency, riskScore);
+            transaction.Id, gatewayType, user.FullName, amount, currency, riskScore);
 
         var updatedTx = await _orchestrator.ProcessAsync(transaction, ct);
 
@@ -208,9 +190,9 @@ public class PaymentsController : ControllerBase
         return StatusCode(StatusCodes.Status201Created, response);
     }
 
-    private Merchant GetMerchant()
+    private User GetUser()
     {
-        return (HttpContext.Items["Merchant"] as Merchant)!;
+        return (HttpContext.Items["User"] as User)!;
     }
 
     private static string ExtractAccountIdentifier<TRequest>(TRequest request)

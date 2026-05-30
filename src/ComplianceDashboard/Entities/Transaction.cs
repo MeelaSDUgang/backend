@@ -4,7 +4,7 @@ public class Transaction
 {
     public Guid Id { get; set; }
 
-    public Guid MerchantId { get; set; }
+    public Guid UserId { get; set; }
 
     public Guid BankId { get; set; }
 
@@ -36,5 +36,5 @@ public class Transaction
 
     public virtual BankAdapter Bank { get; set; } = null!;
 
-    public virtual Merchant Merchant { get; set; } = null!;
+    public virtual User User { get; set; } = null!;
 }

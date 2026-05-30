@@ -1,4 +1,4 @@
-using GatewayApi.Entities;
+using GatewayApi.Enums;
 
 namespace GatewayApi.Services.Banking;
 
