@@ -1,9 +1,6 @@
-﻿using System;
-using System.Collections.Generic;
+﻿namespace ComplianceDashboard.Entities;
 
-namespace ComplianceDashboard.Entities;
-
-public partial class AppealAnswer
+public class AppealAnswer
 {
     public Guid Id { get; set; }
 

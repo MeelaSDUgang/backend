@@ -1,6 +1,4 @@
-﻿using System;
-using System.Collections.Generic;
-using ComplianceDashboard.Entities;
+﻿using ComplianceDashboard.Entities;
 using Microsoft.EntityFrameworkCore;
 
 namespace ComplianceDashboard.Data;
@@ -173,7 +171,8 @@ public partial class DashboardDbContext : DbContext
                 .HasColumnName("summary");
             entity.Property(e => e.TransactionId).HasColumnName("transaction_id");
 
-            entity.HasOne(d => d.Transaction).WithOne(p => p.FraudReview).HasForeignKey<FraudReview>(d => d.TransactionId);
+            entity.HasOne(d => d.Transaction).WithOne(p => p.FraudReview)
+                .HasForeignKey<FraudReview>(d => d.TransactionId);
         });
 
         modelBuilder.Entity<Operation>(entity =>
@@ -239,7 +238,8 @@ public partial class DashboardDbContext : DbContext
         {
             entity.HasIndex(e => e.BankId, "IX_Transactions_BankId");
 
-            entity.HasIndex(e => new { e.IdempotencyKey, e.UserId }, "IX_Transactions_IdempotencyKey_UserId").IsUnique();
+            entity.HasIndex(e => new { e.IdempotencyKey, e.UserId }, "IX_Transactions_IdempotencyKey_UserId")
+                .IsUnique();
 
             entity.HasIndex(e => e.UserId, "IX_Transactions_UserId");
 

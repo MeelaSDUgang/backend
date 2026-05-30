@@ -1,9 +1,6 @@
-﻿using System;
-using System.Collections.Generic;
+﻿namespace ComplianceDashboard.Entities;
 
-namespace ComplianceDashboard.Entities;
-
-public partial class User
+public class User
 {
     public Guid Id { get; set; }
 

@@ -4,6 +4,7 @@ using ComplianceDashboard.Contracts.Appeals;
 using ComplianceDashboard.Contracts.Support;
 using ComplianceDashboard.Data;
 using ComplianceDashboard.Services;
+using ComplianceDashboard.Services.TransactionProcessing;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.OpenApi;
 
@@ -14,6 +15,10 @@ builder.Services.AddDbContext<DashboardDbContext>(options =>
 
 builder.Services.AddScoped<IClientAppealService, ClientAppealService>();
 builder.Services.AddScoped<ISupportService, SupportService>();
+builder.Services.AddSingleton<ITransactionWorkerQueue, TransactionWorkerQueue>();
+builder.Services.AddScoped<ILowRiskPollingService, LowRiskPollingService>();
+builder.Services.AddScoped<IHighRiskVerificationService, HighRiskVerificationService>();
+builder.Services.AddHostedService<TransactionReviewWorker>();
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen(options =>
 {
