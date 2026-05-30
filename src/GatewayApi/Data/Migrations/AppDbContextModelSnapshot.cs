@@ -228,6 +228,75 @@ namespace GatewayApi.Data.Migrations
                     b.ToTable("BankAdapters");
                 });
 
+            modelBuilder.Entity("GatewayApi.Entities.FraudReview", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<string>("Advice")
+                        .IsRequired()
+                        .HasMaxLength(2000)
+                        .HasColumnType("character varying(2000)")
+                        .HasColumnName("advice");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at");
+
+                    b.Property<DateTimeOffset>("EvaluatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("evaluated_at");
+
+                    b.Property<decimal>("FraudScore")
+                        .HasPrecision(6, 4)
+                        .HasColumnType("numeric(6,4)")
+                        .HasColumnName("fraud_score");
+
+                    b.Property<bool>("IsFraud")
+                        .HasColumnType("boolean")
+                        .HasColumnName("is_fraud");
+
+                    b.Property<string>("ReasonsJson")
+                        .IsRequired()
+                        .HasColumnType("jsonb")
+                        .HasColumnName("reasons_json");
+
+                    b.Property<string>("RiskTier")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)")
+                        .HasColumnName("risk_tier");
+
+                    b.Property<string>("Status")
+                        .IsRequired()
+                        .HasMaxLength(32)
+                        .HasColumnType("character varying(32)")
+                        .HasColumnName("status");
+
+                    b.Property<string>("Summary")
+                        .IsRequired()
+                        .HasMaxLength(4000)
+                        .HasColumnType("character varying(4000)")
+                        .HasColumnName("summary");
+
+                    b.Property<Guid>("TransactionId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("transaction_id");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("RiskTier");
+
+                    b.HasIndex("Status");
+
+                    b.HasIndex("TransactionId")
+                        .IsUnique();
+
+                    b.ToTable("fraud_reviews", (string)null);
+                });
+
             modelBuilder.Entity("GatewayApi.Entities.Operation", b =>
                 {
                     b.Property<Guid>("Id")
@@ -576,6 +645,17 @@ namespace GatewayApi.Data.Migrations
                     b.Navigation("Case");
                 });
 
+            modelBuilder.Entity("GatewayApi.Entities.FraudReview", b =>
+                {
+                    b.HasOne("GatewayApi.Entities.Transaction", "Transaction")
+                        .WithOne("FraudReview")
+                        .HasForeignKey("GatewayApi.Entities.FraudReview", "TransactionId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Transaction");
+                });
+
             modelBuilder.Entity("GatewayApi.Entities.Operation", b =>
                 {
                     b.HasOne("GatewayApi.Entities.User", "User")
@@ -634,6 +714,11 @@ namespace GatewayApi.Data.Migrations
             modelBuilder.Entity("GatewayApi.Entities.Operation", b =>
                 {
                     b.Navigation("AppealCases");
+                });
+
+            modelBuilder.Entity("GatewayApi.Entities.Transaction", b =>
+                {
+                    b.Navigation("FraudReview");
                 });
 
             modelBuilder.Entity("GatewayApi.Entities.User", b =>

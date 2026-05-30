@@ -6,6 +6,7 @@ using GatewayApi.Filters;
 using GatewayApi.Models;
 using GatewayApi.Services;
 using GatewayApi.Services.Banking;
+using GatewayApi.Services.Fraud;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 
@@ -17,6 +18,7 @@ namespace GatewayApi.Controllers;
 public class PaymentsController : ControllerBase
 {
     private readonly AppDbContext _db;
+    private readonly IFraudEvaluationService _fraudEvaluationService;
     private readonly IdempotencyService _idempotency;
     private readonly ILogger<PaymentsController> _logger;
     private readonly PaymentOrchestrator _orchestrator;
@@ -25,11 +27,13 @@ public class PaymentsController : ControllerBase
         AppDbContext db,
         PaymentOrchestrator orchestrator,
         IdempotencyService idempotency,
+        IFraudEvaluationService fraudEvaluationService,
         ILogger<PaymentsController> logger)
     {
         _db = db;
         _orchestrator = orchestrator;
         _idempotency = idempotency;
+        _fraudEvaluationService = fraudEvaluationService;
         _logger = logger;
     }
 
@@ -113,114 +117,85 @@ public class PaymentsController : ControllerBase
         if (string.IsNullOrWhiteSpace(currency) || currency.Length != 3)
             return BadRequest(new ErrorResponse("Currency must be a 3-letter ISO code"));
 
-        var rawPayload = JsonSerializer.Serialize(request, new JsonSerializerOptions
-        {
-            PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
-            WriteIndented = false
-        });
         var transactionFields = ExtractTransactionFields(request, gatewayType);
 
-        var riskScore = 0;
-        var reason = "hui";
+        var fraudEvaluation = await _fraudEvaluationService.EvaluateAsync(
+            new FraudScoringInput(
+                transactionFields.Step,
+                transactionFields.Type,
+                amount,
+                transactionFields.OldbalanceOrg,
+                transactionFields.NewbalanceOrig,
+                transactionFields.OldbalanceDest,
+                transactionFields.NewbalanceDest,
+                transactionFields.NameOrig,
+                transactionFields.NameDest),
+            ct);
 
-        var fraudResult = false;
+        if (!fraudEvaluation.IsAvailable)
+            return StatusCode(
+                StatusCodes.Status503ServiceUnavailable,
+                new ErrorResponse(
+                    "Fraud scoring unavailable",
+                    fraudEvaluation.Error));
 
-        if (fraudResult)
+        var transaction = CreateTransaction(
+            user,
+            bankId,
+            idempotencyKey,
+            ExtractAccountIdentifier(request),
+            amount,
+            currency,
+            gatewayType,
+            transactionFields);
+
+        switch (fraudEvaluation.RiskLevel)
         {
-            _logger.LogWarning(
-                "FRAUD BLOCKED — {Type} {Amount} {Currency} for {Merchant}: score={Score}, reason={Reason}",
-                gatewayType, amount, currency, user.FullName,
-                riskScore, reason);
+            case FraudRiskLevel.Low:
+                transaction.TransactionStatus = TransactionStatus.Pending;
+                _db.Transactions.Add(transaction);
+                await _db.SaveChangesAsync(ct);
+                Response.Headers["X-Correlation-Id"] = transaction.Id.ToString();
+                return StatusCode(StatusCodes.Status201Created, ToPaymentResponse(transaction));
 
-            var rejectedTx = new Transaction
-            {
-                Id = Guid.NewGuid(),
-                UserId = user.Id,
-                BankId = bankId,
-                IdempotencyKey = idempotencyKey,
-                Account = ExtractAccountIdentifier(request),
-                Amount = amount,
-                NameDest = transactionFields.NameDest,
-                NameOrig = transactionFields.NameOrig,
-                NewbalanceDest = transactionFields.NewbalanceDest,
-                NewbalanceOrig = transactionFields.NewbalanceOrig,
-                OldbalanceDest = transactionFields.OldbalanceDest,
-                OldbalanceOrg = transactionFields.OldbalanceOrg,
-                Step = transactionFields.Step,
-                Type = transactionFields.Type,
-                Label = transactionFields.Label,
-                Currency = currency.ToUpperInvariant(),
-                GatewayType = gatewayType,
-                TransactionStatus = TransactionStatus.Rejected,
-                CreatedAt = DateTime.UtcNow,
-                UpdatedAt = DateTime.UtcNow
-            };
+            case FraudRiskLevel.Medium:
+                transaction.TransactionStatus = TransactionStatus.Rejected;
+                transaction.FailureReason = fraudEvaluation.Interpretation?.Summary ?? fraudEvaluation.Score!.RiskTier;
+                _db.Transactions.Add(transaction);
+                if (fraudEvaluation.Interpretation is not null)
+                    _db.FraudReviews.Add(CreateFraudReview(transaction, fraudEvaluation));
 
-            _db.Transactions.Add(rejectedTx);
-            await _db.SaveChangesAsync(ct);
+                await _db.SaveChangesAsync(ct);
+                Response.Headers["X-Correlation-Id"] = transaction.Id.ToString();
+                return StatusCode(StatusCodes.Status202Accepted,
+                    CreateFraudReviewResponse(transaction, fraudEvaluation));
 
-            return StatusCode(StatusCodes.Status403Forbidden, new
-            {
-                error = "Transaction rejected by Anti-Fraud system",
-                transactionId = rejectedTx.Id,
-                status = "REJECTED",
-                fraudScore = riskScore / 100.0,
-                reason
-            });
+            case FraudRiskLevel.High:
+                transaction.TransactionStatus = TransactionStatus.Failed;
+                transaction.FailureReason = fraudEvaluation.Interpretation?.Summary ?? fraudEvaluation.Score!.RiskTier;
+                _db.Users.Attach(user);
+                user.AccountStatus = AccountStatus.BLOCKED;
+                user.UpdatedAt = DateTimeOffset.UtcNow;
+                _db.Entry(user).Property(item => item.AccountStatus).IsModified = true;
+                _db.Entry(user).Property(item => item.UpdatedAt).IsModified = true;
+                _db.Transactions.Add(transaction);
+                if (fraudEvaluation.Interpretation is not null)
+                    _db.FraudReviews.Add(CreateFraudReview(transaction, fraudEvaluation));
+
+                await _db.SaveChangesAsync(ct);
+                Response.Headers["X-Correlation-Id"] = transaction.Id.ToString();
+                return StatusCode(StatusCodes.Status403Forbidden,
+                    CreateFraudReviewResponse(transaction, fraudEvaluation));
         }
-
-        var transaction = new Transaction
-        {
-            Id = Guid.NewGuid(),
-            UserId = user.Id,
-            BankId = bankId,
-            IdempotencyKey = idempotencyKey,
-            Account = ExtractAccountIdentifier(request),
-            Amount = amount,
-            NameDest = transactionFields.NameDest,
-            NameOrig = transactionFields.NameOrig,
-            NewbalanceDest = transactionFields.NewbalanceDest,
-            NewbalanceOrig = transactionFields.NewbalanceOrig,
-            OldbalanceDest = transactionFields.OldbalanceDest,
-            OldbalanceOrg = transactionFields.OldbalanceOrg,
-            Step = transactionFields.Step,
-            Type = transactionFields.Type,
-            Label = transactionFields.Label,
-            Currency = currency.ToUpperInvariant(),
-            GatewayType = gatewayType,
-            CreatedAt = DateTime.UtcNow,
-            UpdatedAt = DateTime.UtcNow
-        };
 
         _db.Transactions.Add(transaction);
         await _db.SaveChangesAsync(ct);
 
-        _logger.LogInformation(
-            "Tx {TxId} CREATED — {Type} for {MerchantName} ({Amount} {Currency}), fraudScore={FraudScore}",
-            transaction.Id, gatewayType, user.FullName, amount, currency, riskScore);
-
         var updatedTx = await _orchestrator.ProcessAsync(transaction, ct);
-
-        var response = new PaymentResponse(
-            updatedTx.Id.ToString(),
-            updatedTx.BankId.ToString(),
-            updatedTx.Type,
-            updatedTx.TransactionStatus.ToString().ToUpper(),
-            updatedTx.Amount,
-            updatedTx.NameDest,
-            updatedTx.NameOrig,
-            updatedTx.NewbalanceDest,
-            updatedTx.NewbalanceOrig,
-            updatedTx.OldbalanceDest,
-            updatedTx.OldbalanceOrg,
-            updatedTx.Step,
-            updatedTx.Label,
-            updatedTx.Currency,
-            updatedTx.UpdatedAt);
 
         Response.Headers["X-Correlation-Id"] = updatedTx.Id.ToString();
 
-        return StatusCode(StatusCodes.Status201Created, response);
+        return StatusCode(StatusCodes.Status201Created, ToPaymentResponse(updatedTx));
     }
 
     private User GetUser()
@@ -270,6 +245,101 @@ public class PaymentsController : ControllerBase
     private static string ValueOrDefault(string? value, string defaultValue)
     {
         return string.IsNullOrWhiteSpace(value) ? defaultValue : value.Trim();
+    }
+
+    private static Transaction CreateTransaction(
+        User user,
+        Guid bankId,
+        Guid idempotencyKey,
+        string account,
+        decimal amount,
+        string currency,
+        GatewayType gatewayType,
+        TransactionFields transactionFields)
+    {
+        var now = DateTime.UtcNow;
+
+        return new Transaction
+        {
+            Id = Guid.NewGuid(),
+            UserId = user.Id,
+            BankId = bankId,
+            IdempotencyKey = idempotencyKey,
+            Account = account,
+            Amount = amount,
+            NameDest = transactionFields.NameDest,
+            NameOrig = transactionFields.NameOrig,
+            NewbalanceDest = transactionFields.NewbalanceDest,
+            NewbalanceOrig = transactionFields.NewbalanceOrig,
+            OldbalanceDest = transactionFields.OldbalanceDest,
+            OldbalanceOrg = transactionFields.OldbalanceOrg,
+            Step = transactionFields.Step,
+            Type = transactionFields.Type,
+            Label = transactionFields.Label,
+            Currency = currency.ToUpperInvariant(),
+            GatewayType = gatewayType,
+            TransactionStatus = TransactionStatus.Created,
+            CreatedAt = now,
+            UpdatedAt = now
+        };
+    }
+
+    private static PaymentResponse ToPaymentResponse(Transaction transaction)
+    {
+        return new PaymentResponse(
+            transaction.Id.ToString(),
+            transaction.BankId.ToString(),
+            transaction.Type,
+            transaction.TransactionStatus.ToString().ToUpper(),
+            transaction.Amount,
+            transaction.NameDest,
+            transaction.NameOrig,
+            transaction.NewbalanceDest,
+            transaction.NewbalanceOrig,
+            transaction.OldbalanceDest,
+            transaction.OldbalanceOrg,
+            transaction.Step,
+            transaction.Label,
+            transaction.Currency,
+            transaction.UpdatedAt);
+    }
+
+    private static object CreateFraudReviewResponse(Transaction transaction, FraudEvaluationResult fraudEvaluation)
+    {
+        return new
+        {
+            error = transaction.TransactionStatus == TransactionStatus.Failed
+                ? "Transaction failed by Anti-Fraud system"
+                : "Transaction sent to Compliance review",
+            transactionId = transaction.Id,
+            status = transaction.TransactionStatus.ToString().ToUpper(),
+            fraudScore = fraudEvaluation.Score!.FraudScore,
+            riskTier = fraudEvaluation.Interpretation?.RiskTier ?? fraudEvaluation.Score.RiskTier,
+            summary = fraudEvaluation.Interpretation?.Summary,
+            reasons = fraudEvaluation.Interpretation?.Reasons ?? [],
+            advice = fraudEvaluation.Interpretation?.Advice
+        };
+    }
+
+    private static FraudReview CreateFraudReview(Transaction transaction, FraudEvaluationResult fraudEvaluation)
+    {
+        var score = fraudEvaluation.Score!;
+        var interpretation = fraudEvaluation.Interpretation!;
+
+        return new FraudReview
+        {
+            Id = Guid.NewGuid(),
+            TransactionId = transaction.Id,
+            FraudScore = score.FraudScore,
+            RiskTier = ValueOrDefault(interpretation.RiskTier, score.RiskTier),
+            IsFraud = score.IsFraud,
+            Status = interpretation.Status,
+            Summary = interpretation.Summary,
+            ReasonsJson = JsonSerializer.Serialize(interpretation.Reasons),
+            Advice = interpretation.Advice,
+            EvaluatedAt = score.EvaluatedAt,
+            CreatedAt = DateTimeOffset.UtcNow
+        };
     }
 
     private sealed record TransactionFields(

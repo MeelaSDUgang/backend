@@ -149,6 +149,33 @@ namespace GatewayApi.Data.Migrations
                 });
 
             migrationBuilder.CreateTable(
+                name: "fraud_reviews",
+                columns: table => new
+                {
+                    id = table.Column<Guid>(type: "uuid", nullable: false),
+                    transaction_id = table.Column<Guid>(type: "uuid", nullable: false),
+                    fraud_score = table.Column<decimal>(type: "numeric(6,4)", precision: 6, scale: 4, nullable: false),
+                    risk_tier = table.Column<string>(type: "character varying(64)", maxLength: 64, nullable: false),
+                    is_fraud = table.Column<bool>(type: "boolean", nullable: false),
+                    status = table.Column<string>(type: "character varying(32)", maxLength: 32, nullable: false),
+                    summary = table.Column<string>(type: "character varying(4000)", maxLength: 4000, nullable: false),
+                    reasons_json = table.Column<string>(type: "jsonb", nullable: false),
+                    advice = table.Column<string>(type: "character varying(2000)", maxLength: 2000, nullable: false),
+                    evaluated_at = table.Column<DateTimeOffset>(type: "timestamp with time zone", nullable: false),
+                    created_at = table.Column<DateTimeOffset>(type: "timestamp with time zone", nullable: false)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_fraud_reviews", x => x.id);
+                    table.ForeignKey(
+                        name: "FK_fraud_reviews_Transactions_transaction_id",
+                        column: x => x.transaction_id,
+                        principalTable: "Transactions",
+                        principalColumn: "Id",
+                        onDelete: ReferentialAction.Cascade);
+                });
+
+            migrationBuilder.CreateTable(
                 name: "appeal_answers",
                 columns: table => new
                 {
@@ -279,6 +306,22 @@ namespace GatewayApi.Data.Migrations
                 column: "case_id");
 
             migrationBuilder.CreateIndex(
+                name: "IX_fraud_reviews_risk_tier",
+                table: "fraud_reviews",
+                column: "risk_tier");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_fraud_reviews_status",
+                table: "fraud_reviews",
+                column: "status");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_fraud_reviews_transaction_id",
+                table: "fraud_reviews",
+                column: "transaction_id",
+                unique: true);
+
+            migrationBuilder.CreateIndex(
                 name: "IX_operations_status",
                 table: "operations",
                 column: "status");
@@ -330,6 +373,9 @@ namespace GatewayApi.Data.Migrations
 
             migrationBuilder.DropTable(
                 name: "appeal_documents");
+
+            migrationBuilder.DropTable(
+                name: "fraud_reviews");
 
             migrationBuilder.DropTable(
                 name: "support_decisions");

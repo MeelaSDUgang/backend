@@ -27,4 +27,5 @@ public class Transaction
     public string? FailureReason { get; set; }
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
     public DateTime UpdatedAt { get; set; } = DateTime.UtcNow;
+    public FraudReview? FraudReview { get; set; }
 }

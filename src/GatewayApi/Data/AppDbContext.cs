@@ -33,6 +33,7 @@ public class AppDbContext : DbContext
 
     public DbSet<BankAdapter> BankAdapters { get; set; }
     public DbSet<Transaction> Transactions { get; set; }
+    public DbSet<FraudReview> FraudReviews { get; set; }
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -88,6 +89,57 @@ public class AppDbContext : DbContext
                 .WithMany(b => b.Transactions)
                 .HasForeignKey(t => t.BankId)
                 .OnDelete(DeleteBehavior.Restrict);
+        });
+
+        modelBuilder.Entity<FraudReview>(entity =>
+        {
+            entity.ToTable("fraud_reviews");
+            entity.HasKey(review => review.Id);
+
+            entity.Property(review => review.Id).HasColumnName("id");
+            entity.Property(review => review.TransactionId).HasColumnName("transaction_id").IsRequired();
+            entity.Property(review => review.FraudScore)
+                .HasColumnName("fraud_score")
+                .HasPrecision(6, 4)
+                .IsRequired();
+            entity.Property(review => review.RiskTier)
+                .HasColumnName("risk_tier")
+                .HasMaxLength(64)
+                .IsRequired();
+            entity.Property(review => review.IsFraud).HasColumnName("is_fraud").IsRequired();
+            entity.Property(review => review.Status)
+                .HasColumnName("status")
+                .HasMaxLength(32)
+                .IsRequired();
+            entity.Property(review => review.Summary)
+                .HasColumnName("summary")
+                .HasMaxLength(4000)
+                .IsRequired();
+            entity.Property(review => review.ReasonsJson)
+                .HasColumnName("reasons_json")
+                .HasColumnType("jsonb")
+                .IsRequired();
+            entity.Property(review => review.Advice)
+                .HasColumnName("advice")
+                .HasMaxLength(2000)
+                .IsRequired();
+            entity.Property(review => review.EvaluatedAt)
+                .HasColumnName("evaluated_at")
+                .HasColumnType("timestamp with time zone")
+                .IsRequired();
+            entity.Property(review => review.CreatedAt)
+                .HasColumnName("created_at")
+                .HasColumnType("timestamp with time zone")
+                .IsRequired();
+
+            entity.HasOne(review => review.Transaction)
+                .WithOne(transaction => transaction.FraudReview)
+                .HasForeignKey<FraudReview>(review => review.TransactionId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            entity.HasIndex(review => review.TransactionId).IsUnique();
+            entity.HasIndex(review => review.Status);
+            entity.HasIndex(review => review.RiskTier);
         });
 
         ConfigureUsers(modelBuilder);

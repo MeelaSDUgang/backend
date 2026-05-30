@@ -71,13 +71,26 @@ public class PaymentOrchestrator
             return transaction;
         }
 
-        transaction.TransactionStatus = TransactionStatus.Pending;
+        var bankResponse = await adapter.ProcessPaymentAsync(
+            new PaymentContext(
+                transaction.Id,
+                transaction.GatewayType,
+                transaction.BankId,
+                transaction.Amount,
+                transaction.Currency,
+                "{}"),
+            ct);
+
+        transaction.TransactionStatus = bankResponse.Success
+            ? TransactionStatus.Completed
+            : TransactionStatus.Failed;
+        transaction.FailureReason = bankResponse.Success ? null : bankResponse.FailureReason;
         transaction.UpdatedAt = DateTime.UtcNow;
         await _db.SaveChangesAsync(ct);
 
         _logger.LogInformation(
-            "Tx {TxId} → PENDING, routed to [{AdapterName}] — {Type} {Amount} {Currency}",
-            transaction.Id, adapter.RoutingKey, transaction.GatewayType,
+            "Tx {TxId} routed to [{AdapterName}] -> {Status} - {Type} {Amount} {Currency}",
+            transaction.Id, adapter.RoutingKey, transaction.TransactionStatus, transaction.GatewayType,
             transaction.Amount, transaction.Currency);
 
         return transaction;

@@ -3,6 +3,7 @@ using GatewayApi.Filters;
 using GatewayApi.Services;
 using GatewayApi.Services.Banking;
 using GatewayApi.Services.Banking.Adapters;
+using GatewayApi.Services.Fraud;
 using Microsoft.EntityFrameworkCore;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -16,6 +17,8 @@ builder.Services.AddSingleton<IPaymentAdapter, HalykBankAdapter>();
 
 builder.Services.AddScoped<PaymentOrchestrator>();
 builder.Services.AddScoped<IdempotencyService>();
+builder.Services.Configure<FraudOptions>(builder.Configuration.GetSection("Fraud"));
+builder.Services.AddHttpClient<IFraudEvaluationService, FraudEvaluationService>();
 
 builder.Services.AddControllers();
 
