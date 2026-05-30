@@ -1,6 +1,9 @@
-﻿namespace ComplianceDashboard.Entities;
+﻿using System;
+using System.Collections.Generic;
 
-public class BankAdapter
+namespace ComplianceDashboard.Entities;
+
+public partial class BankAdapter
 {
     public Guid Id { get; set; }
 

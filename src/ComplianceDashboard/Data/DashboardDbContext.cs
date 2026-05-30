@@ -1,4 +1,6 @@
-﻿using ComplianceDashboard.Entities;
+﻿using System;
+using System.Collections.Generic;
+using ComplianceDashboard.Entities;
 using Microsoft.EntityFrameworkCore;
 
 namespace ComplianceDashboard.Data;
@@ -17,6 +19,8 @@ public partial class DashboardDbContext : DbContext
     public virtual DbSet<AppealDocument> AppealDocuments { get; set; }
 
     public virtual DbSet<BankAdapter> BankAdapters { get; set; }
+
+    public virtual DbSet<FraudReview> FraudReviews { get; set; }
 
     public virtual DbSet<Operation> Operations { get; set; }
 
@@ -133,6 +137,45 @@ public partial class DashboardDbContext : DbContext
             entity.Property(e => e.SupportedGatewayTypes).HasMaxLength(50);
         });
 
+        modelBuilder.Entity<FraudReview>(entity =>
+        {
+            entity.ToTable("fraud_reviews");
+
+            entity.HasIndex(e => e.RiskTier, "IX_fraud_reviews_risk_tier");
+
+            entity.HasIndex(e => e.Status, "IX_fraud_reviews_status");
+
+            entity.HasIndex(e => e.TransactionId, "IX_fraud_reviews_transaction_id").IsUnique();
+
+            entity.Property(e => e.Id)
+                .ValueGeneratedNever()
+                .HasColumnName("id");
+            entity.Property(e => e.Advice)
+                .HasMaxLength(2000)
+                .HasColumnName("advice");
+            entity.Property(e => e.CreatedAt).HasColumnName("created_at");
+            entity.Property(e => e.EvaluatedAt).HasColumnName("evaluated_at");
+            entity.Property(e => e.FraudScore)
+                .HasPrecision(6, 4)
+                .HasColumnName("fraud_score");
+            entity.Property(e => e.IsFraud).HasColumnName("is_fraud");
+            entity.Property(e => e.ReasonsJson)
+                .HasColumnType("jsonb")
+                .HasColumnName("reasons_json");
+            entity.Property(e => e.RiskTier)
+                .HasMaxLength(64)
+                .HasColumnName("risk_tier");
+            entity.Property(e => e.Status)
+                .HasMaxLength(32)
+                .HasColumnName("status");
+            entity.Property(e => e.Summary)
+                .HasMaxLength(4000)
+                .HasColumnName("summary");
+            entity.Property(e => e.TransactionId).HasColumnName("transaction_id");
+
+            entity.HasOne(d => d.Transaction).WithOne(p => p.FraudReview).HasForeignKey<FraudReview>(d => d.TransactionId);
+        });
+
         modelBuilder.Entity<Operation>(entity =>
         {
             entity.ToTable("operations");
@@ -196,17 +239,22 @@ public partial class DashboardDbContext : DbContext
         {
             entity.HasIndex(e => e.BankId, "IX_Transactions_BankId");
 
-            entity.HasIndex(e => new { e.IdempotencyKey, e.UserId }, "IX_Transactions_IdempotencyKey_UserId")
-                .IsUnique();
+            entity.HasIndex(e => new { e.IdempotencyKey, e.UserId }, "IX_Transactions_IdempotencyKey_UserId").IsUnique();
 
             entity.HasIndex(e => e.UserId, "IX_Transactions_UserId");
 
             entity.Property(e => e.Id).ValueGeneratedNever();
             entity.Property(e => e.Amount).HasPrecision(18, 2);
-            entity.Property(e => e.BankReferenceId).HasMaxLength(100);
             entity.Property(e => e.Currency).HasMaxLength(3);
             entity.Property(e => e.FailureReason).HasMaxLength(500);
-            entity.Property(e => e.RawPayload).HasColumnType("jsonb");
+            entity.Property(e => e.Label).HasMaxLength(100);
+            entity.Property(e => e.NameDest).HasMaxLength(100);
+            entity.Property(e => e.NameOrig).HasMaxLength(100);
+            entity.Property(e => e.NewbalanceDest).HasPrecision(18, 2);
+            entity.Property(e => e.NewbalanceOrig).HasPrecision(18, 2);
+            entity.Property(e => e.OldbalanceDest).HasPrecision(18, 2);
+            entity.Property(e => e.OldbalanceOrg).HasPrecision(18, 2);
+            entity.Property(e => e.Type).HasMaxLength(32);
 
             entity.HasOne(d => d.Bank).WithMany(p => p.Transactions)
                 .HasForeignKey(d => d.BankId)

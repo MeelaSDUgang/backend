@@ -1,6 +1,9 @@
-﻿namespace ComplianceDashboard.Entities;
+﻿using System;
+using System.Collections.Generic;
 
-public class Operation
+namespace ComplianceDashboard.Entities;
+
+public partial class Operation
 {
     public Guid Id { get; set; }
 
