@@ -1,2 +1,8 @@
 <Solution>
+    <Folder Name="/Solution Items/">
+        <File Path="compose.yaml"/>
+    </Folder>
+    <Folder Name="/src/">
+        <Project Path="src/ComplianceDashboard/ComplianceDashboard.csproj"/>
+    </Folder>
 </Solution>
