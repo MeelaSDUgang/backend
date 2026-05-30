@@ -6,8 +6,15 @@ public record PaymentResponse(
     string Type,
     string Status,
     decimal Amount,
+    string NameDest,
+    string NameOrig,
+    decimal NewbalanceDest,
+    decimal NewbalanceOrig,
+    decimal OldbalanceDest,
+    decimal OldbalanceOrg,
+    int Step,
+    string Label,
     string Currency,
-    string? BankReferenceId,
     DateTime UpdatedAt);
 
 public record TransactionStatusResponse(
@@ -16,8 +23,15 @@ public record TransactionStatusResponse(
     string Type,
     string Status,
     decimal Amount,
+    string NameDest,
+    string NameOrig,
+    decimal NewbalanceDest,
+    decimal NewbalanceOrig,
+    decimal OldbalanceDest,
+    decimal OldbalanceOrg,
+    int Step,
+    string Label,
     string Currency,
-    string? BankReferenceId,
     string? FailureReason,
     DateTime CreatedAt,
     DateTime UpdatedAt);
@@ -36,7 +50,16 @@ public record P2PRequest(
     string Currency,
     string Message,
     ContactInfo Sender,
-    ContactInfo Receiver);
+    ContactInfo Receiver,
+    string? NameDest = null,
+    string? NameOrig = null,
+    decimal NewbalanceDest = 0,
+    decimal NewbalanceOrig = 0,
+    decimal OldbalanceDest = 0,
+    decimal OldbalanceOrg = 0,
+    int Step = 0,
+    string? Type = null,
+    string? Label = null);
 
 public record A2ARequest(
     string BankId,

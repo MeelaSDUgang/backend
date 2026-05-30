@@ -58,6 +58,14 @@ public class AppDbContext : DbContext
             entity.HasKey(t => t.Id);
 
             entity.Property(t => t.Amount).HasPrecision(18, 2);
+            entity.Property(t => t.NameDest).IsRequired().HasMaxLength(100);
+            entity.Property(t => t.NameOrig).IsRequired().HasMaxLength(100);
+            entity.Property(t => t.NewbalanceDest).HasPrecision(18, 2);
+            entity.Property(t => t.NewbalanceOrig).HasPrecision(18, 2);
+            entity.Property(t => t.OldbalanceDest).HasPrecision(18, 2);
+            entity.Property(t => t.OldbalanceOrg).HasPrecision(18, 2);
+            entity.Property(t => t.Type).IsRequired().HasMaxLength(32);
+            entity.Property(t => t.Label).IsRequired().HasMaxLength(100);
             entity.Property(t => t.Currency).HasMaxLength(3);
 
             entity.HasIndex(t => new { t.IdempotencyKey, t.UserId }).IsUnique();
@@ -67,12 +75,6 @@ public class AppDbContext : DbContext
 
             entity.Property(t => t.TransactionStatus)
                 .HasConversion<string>();
-
-            entity.Property(t => t.RawPayload)
-                .HasColumnType("jsonb");
-
-            entity.Property(t => t.BankReferenceId)
-                .HasMaxLength(100);
 
             entity.Property(t => t.FailureReason)
                 .HasMaxLength(500);

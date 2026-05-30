@@ -35,11 +35,18 @@ public class IdempotencyService
         return new PaymentResponse(
             existing.Id.ToString(),
             existing.BankId.ToString(),
-            existing.GatewayType.ToString(),
+            existing.Type,
             existing.TransactionStatus.ToString().ToUpper(),
             existing.Amount,
+            existing.NameDest,
+            existing.NameOrig,
+            existing.NewbalanceDest,
+            existing.NewbalanceOrig,
+            existing.OldbalanceDest,
+            existing.OldbalanceOrg,
+            existing.Step,
+            existing.Label,
             existing.Currency,
-            existing.BankReferenceId,
             existing.UpdatedAt);
     }
 }

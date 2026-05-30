@@ -56,11 +56,18 @@ public class PaymentsController : ControllerBase
         return Ok(new TransactionStatusResponse(
             tx.Id.ToString(),
             tx.BankId.ToString(),
-            tx.GatewayType.ToString(),
+            tx.Type,
             tx.TransactionStatus.ToString().ToUpper(),
             tx.Amount,
+            tx.NameDest,
+            tx.NameOrig,
+            tx.NewbalanceDest,
+            tx.NewbalanceOrig,
+            tx.OldbalanceDest,
+            tx.OldbalanceOrg,
+            tx.Step,
+            tx.Label,
             tx.Currency,
-            tx.BankReferenceId,
             tx.FailureReason,
             tx.CreatedAt,
             tx.UpdatedAt));
@@ -86,6 +93,13 @@ public class PaymentsController : ControllerBase
             return Ok(cached);
         }
 
+        if (user.AccountStatus == AccountStatus.BLOCKED)
+            return StatusCode(
+                StatusCodes.Status403Forbidden,
+                new ErrorResponse(
+                    "Account is blocked",
+                    "Payments are not allowed for blocked accounts."));
+
         if (!Guid.TryParse(bankIdStr, out var bankId))
             return BadRequest(new ErrorResponse("Invalid BankId format", "Must be a valid UUID"));
 
@@ -104,6 +118,7 @@ public class PaymentsController : ControllerBase
             PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
             WriteIndented = false
         });
+        var transactionFields = ExtractTransactionFields(request, gatewayType);
 
         var riskScore = 0;
         var reason = "hui";
@@ -125,12 +140,18 @@ public class PaymentsController : ControllerBase
                 IdempotencyKey = idempotencyKey,
                 Account = ExtractAccountIdentifier(request),
                 Amount = amount,
+                NameDest = transactionFields.NameDest,
+                NameOrig = transactionFields.NameOrig,
+                NewbalanceDest = transactionFields.NewbalanceDest,
+                NewbalanceOrig = transactionFields.NewbalanceOrig,
+                OldbalanceDest = transactionFields.OldbalanceDest,
+                OldbalanceOrg = transactionFields.OldbalanceOrg,
+                Step = transactionFields.Step,
+                Type = transactionFields.Type,
+                Label = transactionFields.Label,
                 Currency = currency.ToUpperInvariant(),
                 GatewayType = gatewayType,
                 TransactionStatus = TransactionStatus.Rejected,
-                AiRiskScore = riskScore,
-                AiRiskReason = reason,
-                RawPayload = rawPayload,
                 CreatedAt = DateTime.UtcNow,
                 UpdatedAt = DateTime.UtcNow
             };
@@ -156,12 +177,17 @@ public class PaymentsController : ControllerBase
             IdempotencyKey = idempotencyKey,
             Account = ExtractAccountIdentifier(request),
             Amount = amount,
+            NameDest = transactionFields.NameDest,
+            NameOrig = transactionFields.NameOrig,
+            NewbalanceDest = transactionFields.NewbalanceDest,
+            NewbalanceOrig = transactionFields.NewbalanceOrig,
+            OldbalanceDest = transactionFields.OldbalanceDest,
+            OldbalanceOrg = transactionFields.OldbalanceOrg,
+            Step = transactionFields.Step,
+            Type = transactionFields.Type,
+            Label = transactionFields.Label,
             Currency = currency.ToUpperInvariant(),
             GatewayType = gatewayType,
-            TransactionStatus = TransactionStatus.Created,
-            AiRiskScore = riskScore,
-            AiRiskReason = reason,
-            RawPayload = rawPayload,
             CreatedAt = DateTime.UtcNow,
             UpdatedAt = DateTime.UtcNow
         };
@@ -178,11 +204,18 @@ public class PaymentsController : ControllerBase
         var response = new PaymentResponse(
             updatedTx.Id.ToString(),
             updatedTx.BankId.ToString(),
-            updatedTx.GatewayType.ToString(),
+            updatedTx.Type,
             updatedTx.TransactionStatus.ToString().ToUpper(),
             updatedTx.Amount,
+            updatedTx.NameDest,
+            updatedTx.NameOrig,
+            updatedTx.NewbalanceDest,
+            updatedTx.NewbalanceOrig,
+            updatedTx.OldbalanceDest,
+            updatedTx.OldbalanceOrg,
+            updatedTx.Step,
+            updatedTx.Label,
             updatedTx.Currency,
-            updatedTx.BankReferenceId,
             updatedTx.UpdatedAt);
 
         Response.Headers["X-Correlation-Id"] = updatedTx.Id.ToString();
@@ -206,4 +239,47 @@ public class PaymentsController : ControllerBase
             _ => "unknown"
         };
     }
+
+    private static TransactionFields ExtractTransactionFields<TRequest>(TRequest request, GatewayType gatewayType)
+    {
+        return request switch
+        {
+            P2PRequest p2p => new TransactionFields(
+                ValueOrDefault(p2p.NameDest, p2p.Receiver.PhoneNumber),
+                ValueOrDefault(p2p.NameOrig, p2p.Sender.PhoneNumber),
+                p2p.NewbalanceDest,
+                p2p.NewbalanceOrig,
+                p2p.OldbalanceDest,
+                p2p.OldbalanceOrg,
+                p2p.Step,
+                ValueOrDefault(p2p.Type, "PAYMENT"),
+                ValueOrDefault(p2p.Label, "Legitimate PAYMENT")),
+            _ => new TransactionFields(
+                ExtractAccountIdentifier(request),
+                "unknown",
+                0,
+                0,
+                0,
+                0,
+                0,
+                gatewayType.ToString(),
+                $"Legitimate {gatewayType}")
+        };
+    }
+
+    private static string ValueOrDefault(string? value, string defaultValue)
+    {
+        return string.IsNullOrWhiteSpace(value) ? defaultValue : value.Trim();
+    }
+
+    private sealed record TransactionFields(
+        string NameDest,
+        string NameOrig,
+        decimal NewbalanceDest,
+        decimal NewbalanceOrig,
+        decimal OldbalanceDest,
+        decimal OldbalanceOrg,
+        int Step,
+        string Type,
+        string Label);
 }

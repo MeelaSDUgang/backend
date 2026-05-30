@@ -12,7 +12,7 @@ using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 namespace GatewayApi.Data.Migrations
 {
     [DbContext(typeof(AppDbContext))]
-    [Migration("20260530180930_InitialCreate")]
+    [Migration("20260530203026_InitialCreate")]
     partial class InitialCreate
     {
         /// <inheritdoc />
@@ -364,23 +364,12 @@ namespace GatewayApi.Data.Migrations
                         .IsRequired()
                         .HasColumnType("text");
 
-                    b.Property<string>("AiRiskReason")
-                        .IsRequired()
-                        .HasColumnType("text");
-
-                    b.Property<int>("AiRiskScore")
-                        .HasColumnType("integer");
-
                     b.Property<decimal>("Amount")
                         .HasPrecision(18, 2)
                         .HasColumnType("numeric(18,2)");
 
                     b.Property<Guid>("BankId")
                         .HasColumnType("uuid");
-
-                    b.Property<string>("BankReferenceId")
-                        .HasMaxLength(100)
-                        .HasColumnType("character varying(100)");
 
                     b.Property<DateTime>("CreatedAt")
                         .HasColumnType("timestamp with time zone");
@@ -401,13 +390,48 @@ namespace GatewayApi.Data.Migrations
                     b.Property<Guid>("IdempotencyKey")
                         .HasColumnType("uuid");
 
-                    b.Property<string>("RawPayload")
+                    b.Property<string>("Label")
                         .IsRequired()
-                        .HasColumnType("jsonb");
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)");
+
+                    b.Property<string>("NameDest")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)");
+
+                    b.Property<string>("NameOrig")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)");
+
+                    b.Property<decimal>("NewbalanceDest")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("numeric(18,2)");
+
+                    b.Property<decimal>("NewbalanceOrig")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("numeric(18,2)");
+
+                    b.Property<decimal>("OldbalanceDest")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("numeric(18,2)");
+
+                    b.Property<decimal>("OldbalanceOrg")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("numeric(18,2)");
+
+                    b.Property<int>("Step")
+                        .HasColumnType("integer");
 
                     b.Property<string>("TransactionStatus")
                         .IsRequired()
                         .HasColumnType("text");
+
+                    b.Property<string>("Type")
+                        .IsRequired()
+                        .HasMaxLength(32)
+                        .HasColumnType("character varying(32)");
 
                     b.Property<DateTime>("UpdatedAt")
                         .HasColumnType("timestamp with time zone");
