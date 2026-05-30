@@ -1,0 +1,10 @@
+namespace ComplianceDashboard.Enums;
+
+public enum AppealCaseStatus
+{
+    DRAFT,
+    SUBMITTED,
+    WAITING_SUPPORT,
+    NEED_MORE_DOCS,
+    RESOLVED
+}
