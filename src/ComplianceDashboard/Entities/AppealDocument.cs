@@ -14,5 +14,7 @@ public class AppealDocument
 
     public string FileName { get; set; } = string.Empty;
 
-    public string MockUrl { get; set; } = string.Empty;
+    public string? MockUrl { get; set; }
+
+    public DateTimeOffset CreatedAt { get; set; } = DateTimeOffset.UtcNow;
 }

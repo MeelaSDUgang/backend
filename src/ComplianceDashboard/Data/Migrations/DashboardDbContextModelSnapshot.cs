@@ -39,6 +39,10 @@ namespace ComplianceDashboard.Data.Migrations
                         .HasColumnType("text")
                         .HasColumnName("case_id");
 
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at");
+
                     b.Property<string>("QuestionKey")
                         .IsRequired()
                         .HasMaxLength(128)
@@ -55,6 +59,9 @@ namespace ComplianceDashboard.Data.Migrations
 
                     b.HasIndex("CaseId");
 
+                    b.HasIndex("CaseId", "QuestionKey")
+                        .IsUnique();
+
                     b.ToTable("appeal_answers", (string)null);
                 });
 
@@ -70,9 +77,18 @@ namespace ComplianceDashboard.Data.Migrations
                         .HasColumnType("character varying(32)")
                         .HasColumnName("case_type");
 
+                    b.Property<string>("ClientMessage")
+                        .HasMaxLength(2000)
+                        .HasColumnType("character varying(2000)")
+                        .HasColumnName("client_message");
+
                     b.Property<DateTimeOffset>("CreatedAt")
                         .HasColumnType("timestamp with time zone")
                         .HasColumnName("created_at");
+
+                    b.Property<string>("MissingInfoJson")
+                        .HasColumnType("jsonb")
+                        .HasColumnName("missing_info_json");
 
                     b.Property<string>("OperationId")
                         .HasColumnType("text")
@@ -91,9 +107,8 @@ namespace ComplianceDashboard.Data.Migrations
                         .HasColumnName("status");
 
                     b.Property<string>("SupportSummary")
-                        .IsRequired()
-                        .HasMaxLength(2000)
-                        .HasColumnType("character varying(2000)")
+                        .HasMaxLength(4000)
+                        .HasColumnType("character varying(4000)")
                         .HasColumnName("support_summary");
 
                     b.Property<DateTimeOffset>("UpdatedAt")
@@ -109,11 +124,40 @@ namespace ComplianceDashboard.Data.Migrations
 
                     b.HasIndex("OperationId");
 
+                    b.HasIndex("RouteTo");
+
                     b.HasIndex("Status");
 
                     b.HasIndex("UserId");
 
                     b.ToTable("appeal_cases", (string)null);
+
+                    b.HasData(
+                        new
+                        {
+                            Id = "case_2",
+                            CaseType = "ACCOUNT_BLOCK_APPEAL",
+                            CreatedAt = new DateTimeOffset(new DateTime(2026, 5, 30, 10, 30, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0)),
+                            MissingInfoJson = "[\"Source of funds confirmation is required\", \"Purpose of incoming transfers is required\"]",
+                            RouteTo = "COMPLIANCE",
+                            Status = "NEED_MORE_INFO",
+                            SupportSummary = "Client reported account restriction after several incoming transfers. Supporting documents are not attached yet.",
+                            UpdatedAt = new DateTimeOffset(new DateTime(2026, 5, 30, 10, 30, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0)),
+                            UserId = "user_2"
+                        },
+                        new
+                        {
+                            Id = "case_3",
+                            CaseType = "OPERATION_CONFIRMATION",
+                            CreatedAt = new DateTimeOffset(new DateTime(2026, 5, 30, 10, 30, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0)),
+                            MissingInfoJson = "[]",
+                            OperationId = "op_3",
+                            RouteTo = "SUPPORT",
+                            Status = "SUBMITTED",
+                            SupportSummary = "Client confirmed service payment. Recipient is a company/service. Payment check is attached.",
+                            UpdatedAt = new DateTimeOffset(new DateTime(2026, 5, 30, 10, 30, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0)),
+                            UserId = "user_3"
+                        });
                 });
 
             modelBuilder.Entity("ComplianceDashboard.Entities.AppealDocument", b =>
@@ -126,6 +170,10 @@ namespace ComplianceDashboard.Data.Migrations
                         .IsRequired()
                         .HasColumnType("text")
                         .HasColumnName("case_id");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at");
 
                     b.Property<string>("DocumentType")
                         .IsRequired()
@@ -140,7 +188,6 @@ namespace ComplianceDashboard.Data.Migrations
                         .HasColumnName("file_name");
 
                     b.Property<string>("MockUrl")
-                        .IsRequired()
                         .HasMaxLength(2048)
                         .HasColumnType("character varying(2048)")
                         .HasColumnName("mock_url");
@@ -150,92 +197,6 @@ namespace ComplianceDashboard.Data.Migrations
                     b.HasIndex("CaseId");
 
                     b.ToTable("appeal_documents", (string)null);
-                });
-
-            modelBuilder.Entity("ComplianceDashboard.Entities.ApplicationUser", b =>
-                {
-                    b.Property<string>("Id")
-                        .HasColumnType("text")
-                        .HasColumnName("id");
-
-                    b.Property<int>("AccessFailedCount")
-                        .HasColumnType("integer");
-
-                    b.Property<string>("AccountStatus")
-                        .IsRequired()
-                        .HasMaxLength(16)
-                        .HasColumnType("character varying(16)")
-                        .HasColumnName("account_status");
-
-                    b.Property<string>("ConcurrencyStamp")
-                        .IsConcurrencyToken()
-                        .HasColumnType("text");
-
-                    b.Property<string>("Email")
-                        .HasMaxLength(256)
-                        .HasColumnType("character varying(256)");
-
-                    b.Property<bool>("EmailConfirmed")
-                        .HasColumnType("boolean");
-
-                    b.Property<string>("FullName")
-                        .IsRequired()
-                        .HasMaxLength(200)
-                        .HasColumnType("character varying(200)")
-                        .HasColumnName("full_name");
-
-                    b.Property<bool>("LockoutEnabled")
-                        .HasColumnType("boolean");
-
-                    b.Property<DateTimeOffset?>("LockoutEnd")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.Property<string>("NormalizedEmail")
-                        .HasMaxLength(256)
-                        .HasColumnType("character varying(256)");
-
-                    b.Property<string>("NormalizedUserName")
-                        .HasMaxLength(256)
-                        .HasColumnType("character varying(256)");
-
-                    b.Property<string>("PasswordHash")
-                        .HasColumnType("text");
-
-                    b.Property<string>("Phone")
-                        .IsRequired()
-                        .HasMaxLength(32)
-                        .HasColumnType("character varying(32)")
-                        .HasColumnName("phone");
-
-                    b.Property<string>("PhoneNumber")
-                        .HasColumnType("text");
-
-                    b.Property<bool>("PhoneNumberConfirmed")
-                        .HasColumnType("boolean");
-
-                    b.Property<string>("SecurityStamp")
-                        .HasColumnType("text");
-
-                    b.Property<bool>("TwoFactorEnabled")
-                        .HasColumnType("boolean");
-
-                    b.Property<string>("UserName")
-                        .HasMaxLength(256)
-                        .HasColumnType("character varying(256)");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("NormalizedEmail")
-                        .HasDatabaseName("EmailIndex");
-
-                    b.HasIndex("NormalizedUserName")
-                        .IsUnique()
-                        .HasDatabaseName("UserNameIndex");
-
-                    b.HasIndex("Phone")
-                        .IsUnique();
-
-                    b.ToTable("users", (string)null);
                 });
 
             modelBuilder.Entity("ComplianceDashboard.Entities.Operation", b =>
@@ -265,6 +226,11 @@ namespace ComplianceDashboard.Data.Migrations
                         .HasColumnType("character varying(3)")
                         .HasColumnName("currency");
 
+                    b.Property<string>("RecipientAccount")
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)")
+                        .HasColumnName("recipient_account");
+
                     b.Property<string>("RecipientName")
                         .IsRequired()
                         .HasMaxLength(200)
@@ -276,6 +242,10 @@ namespace ComplianceDashboard.Data.Migrations
                         .HasMaxLength(32)
                         .HasColumnType("character varying(32)")
                         .HasColumnName("status");
+
+                    b.Property<DateTimeOffset>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("updated_at");
 
                     b.Property<string>("UserId")
                         .IsRequired()
@@ -289,138 +259,136 @@ namespace ComplianceDashboard.Data.Migrations
                     b.HasIndex("UserId");
 
                     b.ToTable("operations", (string)null);
+
+                    b.HasData(
+                        new
+                        {
+                            Id = "op_1",
+                            Amount = 250000m,
+                            BlockReasonCode = "CLIENT_CONFIRMATION_REQUIRED",
+                            CreatedAt = new DateTimeOffset(new DateTime(2026, 5, 30, 10, 30, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0)),
+                            Currency = "KZT",
+                            RecipientAccount = "KZ00 **** **** 1234",
+                            RecipientName = "Alisher M.",
+                            Status = "PENDING_CONFIRMATION",
+                            UpdatedAt = new DateTimeOffset(new DateTime(2026, 5, 30, 10, 30, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0)),
+                            UserId = "user_1"
+                        },
+                        new
+                        {
+                            Id = "op_3",
+                            Amount = 45000m,
+                            BlockReasonCode = "CLIENT_CONFIRMATION_REQUIRED",
+                            CreatedAt = new DateTimeOffset(new DateTime(2026, 5, 30, 10, 30, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0)),
+                            Currency = "KZT",
+                            RecipientAccount = "KZ00 **** **** 9876",
+                            RecipientName = "Service Company",
+                            Status = "PENDING_CONFIRMATION",
+                            UpdatedAt = new DateTimeOffset(new DateTime(2026, 5, 30, 10, 30, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0)),
+                            UserId = "user_3"
+                        });
                 });
 
-            modelBuilder.Entity("Microsoft.AspNetCore.Identity.IdentityRole", b =>
+            modelBuilder.Entity("ComplianceDashboard.Entities.SupportDecision", b =>
                 {
                     b.Property<string>("Id")
-                        .HasColumnType("text");
+                        .HasColumnType("text")
+                        .HasColumnName("id");
 
-                    b.Property<string>("ConcurrencyStamp")
-                        .IsConcurrencyToken()
-                        .HasColumnType("text");
+                    b.Property<string>("CaseId")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("case_id");
 
-                    b.Property<string>("Name")
-                        .HasMaxLength(256)
-                        .HasColumnType("character varying(256)");
+                    b.Property<string>("Comment")
+                        .HasMaxLength(2000)
+                        .HasColumnType("character varying(2000)")
+                        .HasColumnName("comment");
 
-                    b.Property<string>("NormalizedName")
-                        .HasMaxLength(256)
-                        .HasColumnType("character varying(256)");
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at");
+
+                    b.Property<string>("Decision")
+                        .IsRequired()
+                        .HasMaxLength(32)
+                        .HasColumnType("character varying(32)")
+                        .HasColumnName("decision");
 
                     b.HasKey("Id");
 
-                    b.HasIndex("NormalizedName")
-                        .IsUnique()
-                        .HasDatabaseName("RoleNameIndex");
+                    b.HasIndex("CaseId");
 
-                    b.ToTable("roles", (string)null);
+                    b.ToTable("support_decisions", (string)null);
                 });
 
-            modelBuilder.Entity("Microsoft.AspNetCore.Identity.IdentityRoleClaim<string>", b =>
+            modelBuilder.Entity("ComplianceDashboard.Entities.User", b =>
                 {
-                    b.Property<int>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("integer");
+                    b.Property<string>("Id")
+                        .HasColumnType("text")
+                        .HasColumnName("id");
 
-                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
-
-                    b.Property<string>("ClaimType")
-                        .HasColumnType("text");
-
-                    b.Property<string>("ClaimValue")
-                        .HasColumnType("text");
-
-                    b.Property<string>("RoleId")
+                    b.Property<string>("AccountStatus")
                         .IsRequired()
-                        .HasColumnType("text");
+                        .HasMaxLength(16)
+                        .HasColumnType("character varying(16)")
+                        .HasColumnName("account_status");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at");
+
+                    b.Property<string>("FullName")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)")
+                        .HasColumnName("full_name");
+
+                    b.Property<string>("Phone")
+                        .IsRequired()
+                        .HasMaxLength(32)
+                        .HasColumnType("character varying(32)")
+                        .HasColumnName("phone");
+
+                    b.Property<DateTimeOffset>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("updated_at");
 
                     b.HasKey("Id");
 
-                    b.HasIndex("RoleId");
+                    b.HasIndex("Phone")
+                        .IsUnique();
 
-                    b.ToTable("role_claims", (string)null);
-                });
+                    b.ToTable("users", (string)null);
 
-            modelBuilder.Entity("Microsoft.AspNetCore.Identity.IdentityUserClaim<string>", b =>
-                {
-                    b.Property<int>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("integer");
-
-                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
-
-                    b.Property<string>("ClaimType")
-                        .HasColumnType("text");
-
-                    b.Property<string>("ClaimValue")
-                        .HasColumnType("text");
-
-                    b.Property<string>("UserId")
-                        .IsRequired()
-                        .HasColumnType("text");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("UserId");
-
-                    b.ToTable("user_claims", (string)null);
-                });
-
-            modelBuilder.Entity("Microsoft.AspNetCore.Identity.IdentityUserLogin<string>", b =>
-                {
-                    b.Property<string>("LoginProvider")
-                        .HasColumnType("text");
-
-                    b.Property<string>("ProviderKey")
-                        .HasColumnType("text");
-
-                    b.Property<string>("ProviderDisplayName")
-                        .HasColumnType("text");
-
-                    b.Property<string>("UserId")
-                        .IsRequired()
-                        .HasColumnType("text");
-
-                    b.HasKey("LoginProvider", "ProviderKey");
-
-                    b.HasIndex("UserId");
-
-                    b.ToTable("user_logins", (string)null);
-                });
-
-            modelBuilder.Entity("Microsoft.AspNetCore.Identity.IdentityUserRole<string>", b =>
-                {
-                    b.Property<string>("UserId")
-                        .HasColumnType("text");
-
-                    b.Property<string>("RoleId")
-                        .HasColumnType("text");
-
-                    b.HasKey("UserId", "RoleId");
-
-                    b.HasIndex("RoleId");
-
-                    b.ToTable("user_roles", (string)null);
-                });
-
-            modelBuilder.Entity("Microsoft.AspNetCore.Identity.IdentityUserToken<string>", b =>
-                {
-                    b.Property<string>("UserId")
-                        .HasColumnType("text");
-
-                    b.Property<string>("LoginProvider")
-                        .HasColumnType("text");
-
-                    b.Property<string>("Name")
-                        .HasColumnType("text");
-
-                    b.Property<string>("Value")
-                        .HasColumnType("text");
-
-                    b.HasKey("UserId", "LoginProvider", "Name");
-
-                    b.ToTable("user_tokens", (string)null);
+                    b.HasData(
+                        new
+                        {
+                            Id = "user_1",
+                            AccountStatus = "LIMITED",
+                            CreatedAt = new DateTimeOffset(new DateTime(2026, 5, 30, 10, 30, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0)),
+                            FullName = "Andrey K.",
+                            Phone = "+7 777 000 00 00",
+                            UpdatedAt = new DateTimeOffset(new DateTime(2026, 5, 30, 10, 30, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0))
+                        },
+                        new
+                        {
+                            Id = "user_2",
+                            AccountStatus = "LIMITED",
+                            CreatedAt = new DateTimeOffset(new DateTime(2026, 5, 30, 10, 30, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0)),
+                            FullName = "Client Account Appeal",
+                            Phone = "+7 777 000 00 02",
+                            UpdatedAt = new DateTimeOffset(new DateTime(2026, 5, 30, 10, 30, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0))
+                        },
+                        new
+                        {
+                            Id = "user_3",
+                            AccountStatus = "ACTIVE",
+                            CreatedAt = new DateTimeOffset(new DateTime(2026, 5, 30, 10, 30, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0)),
+                            FullName = "Client Operation Confirmation",
+                            Phone = "+7 777 000 00 03",
+                            UpdatedAt = new DateTimeOffset(new DateTime(2026, 5, 30, 10, 30, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0))
+                        });
                 });
 
             modelBuilder.Entity("ComplianceDashboard.Entities.AppealAnswer", b =>
@@ -441,7 +409,7 @@ namespace ComplianceDashboard.Data.Migrations
                         .HasForeignKey("OperationId")
                         .OnDelete(DeleteBehavior.SetNull);
 
-                    b.HasOne("ComplianceDashboard.Entities.ApplicationUser", "User")
+                    b.HasOne("ComplianceDashboard.Entities.User", "User")
                         .WithMany("AppealCases")
                         .HasForeignKey("UserId")
                         .OnDelete(DeleteBehavior.Restrict)
@@ -465,7 +433,7 @@ namespace ComplianceDashboard.Data.Migrations
 
             modelBuilder.Entity("ComplianceDashboard.Entities.Operation", b =>
                 {
-                    b.HasOne("ComplianceDashboard.Entities.ApplicationUser", "User")
+                    b.HasOne("ComplianceDashboard.Entities.User", "User")
                         .WithMany("Operations")
                         .HasForeignKey("UserId")
                         .OnDelete(DeleteBehavior.Restrict)
@@ -474,74 +442,36 @@ namespace ComplianceDashboard.Data.Migrations
                     b.Navigation("User");
                 });
 
-            modelBuilder.Entity("Microsoft.AspNetCore.Identity.IdentityRoleClaim<string>", b =>
+            modelBuilder.Entity("ComplianceDashboard.Entities.SupportDecision", b =>
                 {
-                    b.HasOne("Microsoft.AspNetCore.Identity.IdentityRole", null)
-                        .WithMany()
-                        .HasForeignKey("RoleId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-                });
-
-            modelBuilder.Entity("Microsoft.AspNetCore.Identity.IdentityUserClaim<string>", b =>
-                {
-                    b.HasOne("ComplianceDashboard.Entities.ApplicationUser", null)
-                        .WithMany()
-                        .HasForeignKey("UserId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-                });
-
-            modelBuilder.Entity("Microsoft.AspNetCore.Identity.IdentityUserLogin<string>", b =>
-                {
-                    b.HasOne("ComplianceDashboard.Entities.ApplicationUser", null)
-                        .WithMany()
-                        .HasForeignKey("UserId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-                });
-
-            modelBuilder.Entity("Microsoft.AspNetCore.Identity.IdentityUserRole<string>", b =>
-                {
-                    b.HasOne("Microsoft.AspNetCore.Identity.IdentityRole", null)
-                        .WithMany()
-                        .HasForeignKey("RoleId")
+                    b.HasOne("ComplianceDashboard.Entities.AppealCase", "Case")
+                        .WithMany("Decisions")
+                        .HasForeignKey("CaseId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
-                    b.HasOne("ComplianceDashboard.Entities.ApplicationUser", null)
-                        .WithMany()
-                        .HasForeignKey("UserId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-                });
-
-            modelBuilder.Entity("Microsoft.AspNetCore.Identity.IdentityUserToken<string>", b =>
-                {
-                    b.HasOne("ComplianceDashboard.Entities.ApplicationUser", null)
-                        .WithMany()
-                        .HasForeignKey("UserId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
+                    b.Navigation("Case");
                 });
 
             modelBuilder.Entity("ComplianceDashboard.Entities.AppealCase", b =>
                 {
                     b.Navigation("Answers");
 
+                    b.Navigation("Decisions");
+
                     b.Navigation("Documents");
-                });
-
-            modelBuilder.Entity("ComplianceDashboard.Entities.ApplicationUser", b =>
-                {
-                    b.Navigation("AppealCases");
-
-                    b.Navigation("Operations");
                 });
 
             modelBuilder.Entity("ComplianceDashboard.Entities.Operation", b =>
                 {
                     b.Navigation("AppealCases");
+                });
+
+            modelBuilder.Entity("ComplianceDashboard.Entities.User", b =>
+                {
+                    b.Navigation("AppealCases");
+
+                    b.Navigation("Operations");
                 });
 #pragma warning restore 612, 618
         }

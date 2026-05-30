@@ -8,7 +8,7 @@ public class Operation
 
     public string UserId { get; set; } = string.Empty;
 
-    public ApplicationUser User { get; set; } = null!;
+    public User User { get; set; } = null!;
 
     public decimal Amount { get; set; }
 
@@ -16,11 +16,15 @@ public class Operation
 
     public string RecipientName { get; set; } = string.Empty;
 
+    public string? RecipientAccount { get; set; }
+
     public OperationStatus Status { get; set; }
 
     public BlockReasonCode BlockReasonCode { get; set; }
 
     public DateTimeOffset CreatedAt { get; set; } = DateTimeOffset.UtcNow;
+
+    public DateTimeOffset UpdatedAt { get; set; } = DateTimeOffset.UtcNow;
 
     public ICollection<AppealCase> AppealCases { get; set; } = [];
 }

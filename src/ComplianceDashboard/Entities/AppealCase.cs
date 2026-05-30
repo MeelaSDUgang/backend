@@ -8,7 +8,7 @@ public class AppealCase
 
     public string UserId { get; set; } = string.Empty;
 
-    public ApplicationUser User { get; set; } = null!;
+    public User User { get; set; } = null!;
 
     public string? OperationId { get; set; }
 
@@ -18,7 +18,11 @@ public class AppealCase
 
     public AppealCaseStatus Status { get; set; } = AppealCaseStatus.DRAFT;
 
-    public string SupportSummary { get; set; } = string.Empty;
+    public string? SupportSummary { get; set; }
+
+    public string? ClientMessage { get; set; }
+
+    public string? MissingInfoJson { get; set; }
 
     public RouteTo RouteTo { get; set; }
 
@@ -29,4 +33,6 @@ public class AppealCase
     public ICollection<AppealAnswer> Answers { get; set; } = [];
 
     public ICollection<AppealDocument> Documents { get; set; } = [];
+
+    public ICollection<SupportDecision> Decisions { get; set; } = [];
 }

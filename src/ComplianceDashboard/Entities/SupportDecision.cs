@@ -1,6 +1,8 @@
+using ComplianceDashboard.Enums;
+
 namespace ComplianceDashboard.Entities;
 
-public class AppealAnswer
+public class SupportDecision
 {
     public string Id { get; set; } = Guid.NewGuid().ToString("N");
 
@@ -8,11 +10,9 @@ public class AppealAnswer
 
     public AppealCase Case { get; set; } = null!;
 
-    public string QuestionKey { get; set; } = string.Empty;
+    public SupportDecisionType Decision { get; set; }
 
-    public string QuestionText { get; set; } = string.Empty;
-
-    public string Answer { get; set; } = string.Empty;
+    public string? Comment { get; set; }
 
     public DateTimeOffset CreatedAt { get; set; } = DateTimeOffset.UtcNow;
 }

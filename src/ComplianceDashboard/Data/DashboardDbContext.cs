@@ -1,13 +1,15 @@
 using ComplianceDashboard.Entities;
-using Microsoft.AspNetCore.Identity;
-using Microsoft.AspNetCore.Identity.EntityFrameworkCore;
+using ComplianceDashboard.Enums;
 using Microsoft.EntityFrameworkCore;
 
 namespace ComplianceDashboard.Data;
 
-public class DashboardDbContext(DbContextOptions<DashboardDbContext> options)
-    : IdentityDbContext<ApplicationUser, IdentityRole, string>(options)
+public class DashboardDbContext(DbContextOptions<DashboardDbContext> options) : DbContext(options)
 {
+    private static readonly DateTimeOffset SeedCreatedAt = new(2026, 5, 30, 10, 30, 0, TimeSpan.Zero);
+
+    public DbSet<User> Users => Set<User>();
+
     public DbSet<Operation> Operations => Set<Operation>();
 
     public DbSet<AppealCase> AppealCases => Set<AppealCase>();
@@ -16,22 +18,26 @@ public class DashboardDbContext(DbContextOptions<DashboardDbContext> options)
 
     public DbSet<AppealDocument> AppealDocuments => Set<AppealDocument>();
 
+    public DbSet<SupportDecision> SupportDecisions => Set<SupportDecision>();
+
     protected override void OnModelCreating(ModelBuilder builder)
     {
-        base.OnModelCreating(builder);
-
-        ConfigureIdentity(builder);
+        ConfigureUsers(builder);
         ConfigureOperations(builder);
         ConfigureAppealCases(builder);
         ConfigureAppealAnswers(builder);
         ConfigureAppealDocuments(builder);
+        ConfigureSupportDecisions(builder);
+        SeedDemoData(builder);
     }
 
-    private static void ConfigureIdentity(ModelBuilder builder)
+    private static void ConfigureUsers(ModelBuilder builder)
     {
-        builder.Entity<ApplicationUser>(entity =>
+        builder.Entity<User>(entity =>
         {
             entity.ToTable("users");
+            entity.HasKey(user => user.Id);
+
             entity.Property(user => user.Id).HasColumnName("id");
             entity.Property(user => user.FullName).HasColumnName("full_name").HasMaxLength(200).IsRequired();
             entity.Property(user => user.Phone).HasColumnName("phone").HasMaxLength(32).IsRequired();
@@ -40,16 +46,17 @@ public class DashboardDbContext(DbContextOptions<DashboardDbContext> options)
                 .HasConversion<string>()
                 .HasMaxLength(16)
                 .IsRequired();
+            entity.Property(user => user.CreatedAt)
+                .HasColumnName("created_at")
+                .HasColumnType("timestamp with time zone")
+                .IsRequired();
+            entity.Property(user => user.UpdatedAt)
+                .HasColumnName("updated_at")
+                .HasColumnType("timestamp with time zone")
+                .IsRequired();
 
             entity.HasIndex(user => user.Phone).IsUnique();
         });
-
-        builder.Entity<IdentityRole>(entity => entity.ToTable("roles"));
-        builder.Entity<IdentityUserRole<string>>(entity => entity.ToTable("user_roles"));
-        builder.Entity<IdentityUserClaim<string>>(entity => entity.ToTable("user_claims"));
-        builder.Entity<IdentityUserLogin<string>>(entity => entity.ToTable("user_logins"));
-        builder.Entity<IdentityRoleClaim<string>>(entity => entity.ToTable("role_claims"));
-        builder.Entity<IdentityUserToken<string>>(entity => entity.ToTable("user_tokens"));
     }
 
     private static void ConfigureOperations(ModelBuilder builder)
@@ -71,6 +78,9 @@ public class DashboardDbContext(DbContextOptions<DashboardDbContext> options)
                 .HasColumnName("recipient_name")
                 .HasMaxLength(200)
                 .IsRequired();
+            entity.Property(operation => operation.RecipientAccount)
+                .HasColumnName("recipient_account")
+                .HasMaxLength(64);
             entity.Property(operation => operation.Status)
                 .HasColumnName("status")
                 .HasConversion<string>()
@@ -83,6 +93,10 @@ public class DashboardDbContext(DbContextOptions<DashboardDbContext> options)
                 .IsRequired();
             entity.Property(operation => operation.CreatedAt)
                 .HasColumnName("created_at")
+                .HasColumnType("timestamp with time zone")
+                .IsRequired();
+            entity.Property(operation => operation.UpdatedAt)
+                .HasColumnName("updated_at")
                 .HasColumnType("timestamp with time zone")
                 .IsRequired();
 
@@ -118,8 +132,13 @@ public class DashboardDbContext(DbContextOptions<DashboardDbContext> options)
                 .IsRequired();
             entity.Property(appealCase => appealCase.SupportSummary)
                 .HasColumnName("support_summary")
-                .HasMaxLength(2000)
-                .IsRequired();
+                .HasMaxLength(4000);
+            entity.Property(appealCase => appealCase.ClientMessage)
+                .HasColumnName("client_message")
+                .HasMaxLength(2000);
+            entity.Property(appealCase => appealCase.MissingInfoJson)
+                .HasColumnName("missing_info_json")
+                .HasColumnType("jsonb");
             entity.Property(appealCase => appealCase.RouteTo)
                 .HasColumnName("route_to")
                 .HasConversion<string>()
@@ -147,6 +166,7 @@ public class DashboardDbContext(DbContextOptions<DashboardDbContext> options)
             entity.HasIndex(appealCase => appealCase.UserId);
             entity.HasIndex(appealCase => appealCase.OperationId);
             entity.HasIndex(appealCase => appealCase.Status);
+            entity.HasIndex(appealCase => appealCase.RouteTo);
         });
     }
 
@@ -171,6 +191,10 @@ public class DashboardDbContext(DbContextOptions<DashboardDbContext> options)
                 .HasColumnName("answer")
                 .HasMaxLength(4000)
                 .IsRequired();
+            entity.Property(answer => answer.CreatedAt)
+                .HasColumnName("created_at")
+                .HasColumnType("timestamp with time zone")
+                .IsRequired();
 
             entity.HasOne(answer => answer.Case)
                 .WithMany(appealCase => appealCase.Answers)
@@ -178,6 +202,7 @@ public class DashboardDbContext(DbContextOptions<DashboardDbContext> options)
                 .OnDelete(DeleteBehavior.Cascade);
 
             entity.HasIndex(answer => answer.CaseId);
+            entity.HasIndex(answer => new { answer.CaseId, answer.QuestionKey }).IsUnique();
         });
     }
 
@@ -201,7 +226,10 @@ public class DashboardDbContext(DbContextOptions<DashboardDbContext> options)
                 .IsRequired();
             entity.Property(document => document.MockUrl)
                 .HasColumnName("mock_url")
-                .HasMaxLength(2048)
+                .HasMaxLength(2048);
+            entity.Property(document => document.CreatedAt)
+                .HasColumnName("created_at")
+                .HasColumnType("timestamp with time zone")
                 .IsRequired();
 
             entity.HasOne(document => document.Case)
@@ -211,5 +239,129 @@ public class DashboardDbContext(DbContextOptions<DashboardDbContext> options)
 
             entity.HasIndex(document => document.CaseId);
         });
+    }
+
+    private static void ConfigureSupportDecisions(ModelBuilder builder)
+    {
+        builder.Entity<SupportDecision>(entity =>
+        {
+            entity.ToTable("support_decisions");
+            entity.HasKey(decision => decision.Id);
+
+            entity.Property(decision => decision.Id).HasColumnName("id");
+            entity.Property(decision => decision.CaseId).HasColumnName("case_id").IsRequired();
+            entity.Property(decision => decision.Decision)
+                .HasColumnName("decision")
+                .HasConversion<string>()
+                .HasMaxLength(32)
+                .IsRequired();
+            entity.Property(decision => decision.Comment)
+                .HasColumnName("comment")
+                .HasMaxLength(2000);
+            entity.Property(decision => decision.CreatedAt)
+                .HasColumnName("created_at")
+                .HasColumnType("timestamp with time zone")
+                .IsRequired();
+
+            entity.HasOne(decision => decision.Case)
+                .WithMany(appealCase => appealCase.Decisions)
+                .HasForeignKey(decision => decision.CaseId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            entity.HasIndex(decision => decision.CaseId);
+        });
+    }
+
+    private static void SeedDemoData(ModelBuilder builder)
+    {
+        builder.Entity<User>().HasData(
+            new
+            {
+                Id = "user_1",
+                FullName = "Andrey K.",
+                Phone = "+7 777 000 00 00",
+                AccountStatus = AccountStatus.LIMITED,
+                CreatedAt = SeedCreatedAt,
+                UpdatedAt = SeedCreatedAt
+            },
+            new
+            {
+                Id = "user_2",
+                FullName = "Client Account Appeal",
+                Phone = "+7 777 000 00 02",
+                AccountStatus = AccountStatus.LIMITED,
+                CreatedAt = SeedCreatedAt,
+                UpdatedAt = SeedCreatedAt
+            },
+            new
+            {
+                Id = "user_3",
+                FullName = "Client Operation Confirmation",
+                Phone = "+7 777 000 00 03",
+                AccountStatus = AccountStatus.ACTIVE,
+                CreatedAt = SeedCreatedAt,
+                UpdatedAt = SeedCreatedAt
+            });
+
+        builder.Entity<Operation>().HasData(
+            new
+            {
+                Id = "op_1",
+                UserId = "user_1",
+                Amount = 250000m,
+                Currency = Currency.KZT,
+                RecipientName = "Alisher M.",
+                RecipientAccount = "KZ00 **** **** 1234",
+                Status = OperationStatus.PENDING_CONFIRMATION,
+                BlockReasonCode = BlockReasonCode.CLIENT_CONFIRMATION_REQUIRED,
+                CreatedAt = SeedCreatedAt,
+                UpdatedAt = SeedCreatedAt
+            },
+            new
+            {
+                Id = "op_3",
+                UserId = "user_3",
+                Amount = 45000m,
+                Currency = Currency.KZT,
+                RecipientName = "Service Company",
+                RecipientAccount = "KZ00 **** **** 9876",
+                Status = OperationStatus.PENDING_CONFIRMATION,
+                BlockReasonCode = BlockReasonCode.CLIENT_CONFIRMATION_REQUIRED,
+                CreatedAt = SeedCreatedAt,
+                UpdatedAt = SeedCreatedAt
+            });
+
+        builder.Entity<AppealCase>().HasData(
+            new
+            {
+                Id = "case_2",
+                UserId = "user_2",
+                OperationId = (string?)null,
+                CaseType = AppealCaseType.ACCOUNT_BLOCK_APPEAL,
+                Status = AppealCaseStatus.NEED_MORE_INFO,
+                SupportSummary =
+                    "Client reported account restriction after several incoming transfers. Supporting documents are not attached yet.",
+                ClientMessage = (string?)null,
+                MissingInfoJson =
+                    "[\"Source of funds confirmation is required\", \"Purpose of incoming transfers is required\"]",
+                RouteTo = RouteTo.COMPLIANCE,
+                CreatedAt = SeedCreatedAt,
+                UpdatedAt = SeedCreatedAt
+            },
+            new
+            {
+                Id = "case_3",
+                UserId = "user_3",
+                OperationId = "op_3",
+                CaseType = AppealCaseType.OPERATION_CONFIRMATION,
+                Status = AppealCaseStatus.SUBMITTED,
+                SupportSummary =
+                    "Client confirmed service payment. Recipient is a company/service. Payment check is attached.",
+                ClientMessage = (string?)null,
+                MissingInfoJson = "[]",
+                RouteTo = RouteTo.SUPPORT,
+                CreatedAt = SeedCreatedAt,
+                UpdatedAt = SeedCreatedAt
+            });
     }
 }
