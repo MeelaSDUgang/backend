@@ -22,10 +22,7 @@ builder.Services.AddSwaggerGen(options =>
         Title = "Compliance Dashboard API",
         Version = "v1",
         Description = """
-                      Hackathon MVP backend for a banking support intake flow.
-
-                      This API does not perform fraud scoring, AML checks, real account unblocking, or authentication.
-                      Client endpoints assume the demo user `user_1`; support endpoints are open for the demo.
+                      Жай демо
                       """
     });
 
@@ -44,8 +41,6 @@ builder.Services.AddCors(options =>
 });
 
 var app = builder.Build();
-
-await ApplyMigrationsAsync(app.Services);
 
 app.UseCors();
 app.UseSwagger();
@@ -242,39 +237,4 @@ static IResult ToErrorResult<T>(ServiceResult<T> result)
         ErrorCodes.CaseAlreadySubmitted => Results.BadRequest(response),
         _ => Results.Json(response, statusCode: StatusCodes.Status500InternalServerError)
     };
-}
-
-static async Task ApplyMigrationsAsync(IServiceProvider services)
-{
-    const int maxAttempts = 30;
-    var delay = TimeSpan.FromSeconds(2);
-    var logger = services
-        .GetRequiredService<ILoggerFactory>()
-        .CreateLogger("DatabaseMigration");
-
-    for (var attempt = 1; attempt <= maxAttempts; attempt++)
-        try
-        {
-            using var scope = services.CreateScope();
-            var dbContext = scope.ServiceProvider.GetRequiredService<DashboardDbContext>();
-
-            await dbContext.Database.MigrateAsync();
-            logger.LogInformation("Database migrations applied successfully.");
-            return;
-        }
-        catch (Exception exception) when (attempt < maxAttempts)
-        {
-            logger.LogWarning(
-                exception,
-                "Database migration attempt {Attempt}/{MaxAttempts} failed. Retrying in {DelaySeconds} seconds.",
-                attempt,
-                maxAttempts,
-                delay.TotalSeconds);
-
-            await Task.Delay(delay);
-        }
-
-    using var finalScope = services.CreateScope();
-    var finalDbContext = finalScope.ServiceProvider.GetRequiredService<DashboardDbContext>();
-    await finalDbContext.Database.MigrateAsync();
 }

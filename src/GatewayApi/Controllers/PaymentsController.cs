@@ -1,0 +1,233 @@
+using System.Text.Json;
+using GatewayApi.Data;
+using GatewayApi.Entities;
+using GatewayApi.Enums;
+using GatewayApi.Filters;
+using GatewayApi.Models;
+using GatewayApi.Services;
+using GatewayApi.Services.AntiFraud;
+using GatewayApi.Services.Banking;
+using Microsoft.AspNetCore.Mvc;
+using Microsoft.EntityFrameworkCore;
+
+namespace GatewayApi.Controllers;
+
+[ApiController]
+[Route("api/v1/[controller]")]
+[ServiceFilter(typeof(HmacAuthFilter))]
+public class PaymentsController : ControllerBase
+{
+    private readonly IAntiFraudService _antiFraud;
+    private readonly AppDbContext _db;
+    private readonly IdempotencyService _idempotency;
+    private readonly ILogger<PaymentsController> _logger;
+    private readonly PaymentOrchestrator _orchestrator;
+
+    public PaymentsController(
+        AppDbContext db,
+        PaymentOrchestrator orchestrator,
+        IdempotencyService idempotency,
+        IAntiFraudService antiFraud,
+        ILogger<PaymentsController> logger)
+    {
+        _db = db;
+        _orchestrator = orchestrator;
+        _idempotency = idempotency;
+        _antiFraud = antiFraud;
+        _logger = logger;
+    }
+
+    [HttpPost("a2a")]
+    public async Task<IActionResult> ProcessA2A([FromBody] A2ARequest request, CancellationToken ct)
+    {
+        return await ProcessPayment(request.BankId, request.Amount, request.Currency, GatewayType.A2A, request, ct);
+    }
+
+    [HttpPost("b2b")]
+    public async Task<IActionResult> ProcessB2B([FromBody] B2BRequest request, CancellationToken ct)
+    {
+        return await ProcessPayment(request.BankId, request.Amount, request.Currency, GatewayType.B2B, request, ct);
+    }
+
+    [HttpPost("b2c")]
+    public async Task<IActionResult> ProcessB2C([FromBody] PayoutRequest request, CancellationToken ct)
+    {
+        return await ProcessPayment(request.BankId, request.Amount, request.Currency, GatewayType.B2C, request, ct);
+    }
+
+    [HttpPost("p2p")]
+    public async Task<IActionResult> ProcessP2P([FromBody] P2PRequest request, CancellationToken ct)
+    {
+        return await ProcessPayment(request.BankId, request.Amount, request.Currency, GatewayType.P2P, request, ct);
+    }
+
+    [HttpGet("{transactionId:guid}")]
+    public async Task<IActionResult> GetTransactionStatus(Guid transactionId, CancellationToken ct)
+    {
+        var merchant = GetMerchant();
+
+        var tx = await _db.Transactions
+            .AsNoTracking()
+            .FirstOrDefaultAsync(t => t.Id == transactionId && t.MerchantId == merchant.Id, ct);
+
+        if (tx is null)
+            return NotFound(new ErrorResponse("Transaction not found"));
+
+        Response.Headers["X-Correlation-Id"] = tx.Id.ToString();
+
+        return Ok(new TransactionStatusResponse(
+            tx.Id.ToString(),
+            tx.BankId.ToString(),
+            tx.GatewayType.ToString(),
+            tx.TransactionStatus.ToString().ToUpper(),
+            tx.Amount,
+            tx.Currency,
+            tx.BankReferenceId,
+            tx.FailureReason,
+            tx.CreatedAt,
+            tx.UpdatedAt));
+    }
+
+    private async Task<IActionResult> ProcessPayment<TRequest>(
+        string bankIdStr, decimal amount, string currency,
+        GatewayType gatewayType, TRequest request, CancellationToken ct)
+    {
+        var merchant = GetMerchant();
+
+        if (!Request.Headers.TryGetValue("Idempotency-Key", out var idempotencyHeader) ||
+            !Guid.TryParse(idempotencyHeader, out var idempotencyKey))
+            return BadRequest(new ErrorResponse(
+                "Missing or invalid Idempotency-Key header",
+                "Must be a valid UUID"));
+
+        var cached = await _idempotency.CheckAsync(idempotencyKey, merchant.Id, ct);
+        if (cached is not null)
+        {
+            Response.Headers["X-Correlation-Id"] = cached.TransactionId;
+            Response.Headers["X-Idempotency-Hit"] = "true";
+            return Ok(cached);
+        }
+
+        if (!Guid.TryParse(bankIdStr, out var bankId))
+            return BadRequest(new ErrorResponse("Invalid BankId format", "Must be a valid UUID"));
+
+        var bankExists = await _db.BankAdapters.AnyAsync(b => b.Id == bankId, ct);
+        if (!bankExists)
+            return BadRequest(new ErrorResponse("Bank not found", $"No bank adapter with ID '{bankId}'"));
+
+        if (amount <= 0)
+            return BadRequest(new ErrorResponse("Amount must be greater than zero"));
+
+        if (string.IsNullOrWhiteSpace(currency) || currency.Length != 3)
+            return BadRequest(new ErrorResponse("Currency must be a 3-letter ISO code"));
+
+        var rawPayload = JsonSerializer.Serialize(request, new JsonSerializerOptions
+        {
+            PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
+            WriteIndented = false
+        });
+
+        var fraudContext = new FraudEvaluationContext(
+            amount, currency.ToUpperInvariant(), gatewayType.ToString(),
+            merchant.Name, merchant.CreatedAt,
+            ExtractAccountIdentifier(request), rawPayload);
+
+        var fraudResult = await _antiFraud.EvaluateAsync(fraudContext, ct);
+
+        if (fraudResult.IsBlocked)
+        {
+            _logger.LogWarning(
+                "FRAUD BLOCKED — {Type} {Amount} {Currency} for {Merchant}: score={Score}, reason={Reason}",
+                gatewayType, amount, currency, merchant.Name,
+                fraudResult.RiskScore, fraudResult.Reason);
+
+            var rejectedTx = new Transaction
+            {
+                Id = Guid.NewGuid(),
+                MerchantId = merchant.Id,
+                BankId = bankId,
+                IdempotencyKey = idempotencyKey,
+                Account = ExtractAccountIdentifier(request),
+                Amount = amount,
+                Currency = currency.ToUpperInvariant(),
+                GatewayType = gatewayType,
+                TransactionStatus = TransactionStatus.Rejected,
+                AiRiskScore = fraudResult.RiskScore,
+                AiRiskReason = fraudResult.Reason,
+                RawPayload = rawPayload,
+                CreatedAt = DateTime.UtcNow,
+                UpdatedAt = DateTime.UtcNow
+            };
+
+            _db.Transactions.Add(rejectedTx);
+            await _db.SaveChangesAsync(ct);
+
+            return StatusCode(StatusCodes.Status403Forbidden, new
+            {
+                error = "Transaction rejected by Anti-Fraud system",
+                transactionId = rejectedTx.Id,
+                status = "REJECTED",
+                fraudScore = fraudResult.RiskScore / 100.0,
+                reason = fraudResult.Reason
+            });
+        }
+
+        var transaction = new Transaction
+        {
+            Id = Guid.NewGuid(),
+            MerchantId = merchant.Id,
+            BankId = bankId,
+            IdempotencyKey = idempotencyKey,
+            Account = ExtractAccountIdentifier(request),
+            Amount = amount,
+            Currency = currency.ToUpperInvariant(),
+            GatewayType = gatewayType,
+            TransactionStatus = TransactionStatus.Created,
+            AiRiskScore = fraudResult.RiskScore,
+            AiRiskReason = fraudResult.Reason,
+            RawPayload = rawPayload,
+            CreatedAt = DateTime.UtcNow,
+            UpdatedAt = DateTime.UtcNow
+        };
+
+        _db.Transactions.Add(transaction);
+        await _db.SaveChangesAsync(ct);
+
+        _logger.LogInformation(
+            "Tx {TxId} CREATED — {Type} for {MerchantName} ({Amount} {Currency}), fraudScore={FraudScore}",
+            transaction.Id, gatewayType, merchant.Name, amount, currency, fraudResult.RiskScore);
+
+        var updatedTx = await _orchestrator.ProcessAsync(transaction, ct);
+
+        var response = new PaymentResponse(
+            updatedTx.Id.ToString(),
+            updatedTx.BankId.ToString(),
+            updatedTx.GatewayType.ToString(),
+            updatedTx.TransactionStatus.ToString().ToUpper(),
+            updatedTx.Amount,
+            updatedTx.Currency,
+            updatedTx.BankReferenceId,
+            updatedTx.UpdatedAt);
+
+        Response.Headers["X-Correlation-Id"] = updatedTx.Id.ToString();
+
+        return StatusCode(StatusCodes.Status201Created, response);
+    }
+
+    private Merchant GetMerchant()
+    {
+        return (HttpContext.Items["Merchant"] as Merchant)!;
+    }
+
+    private static string ExtractAccountIdentifier<TRequest>(TRequest request)
+    {
+        return request switch
+        {
+            A2ARequest a2a => a2a.DebtorAccount.Iban,
+            B2BRequest b2b => b2b.PayerInfo.AccountNumber,
+            PayoutRequest b2c => b2c.FundingAccount.Iban,
+            P2PRequest p2p => p2p.Sender.PhoneNumber,
+            _ => "unknown"
+        };
+    }
+}

@@ -1,30 +1,28 @@
-using ComplianceDashboard.Enums;
-
-namespace ComplianceDashboard.Entities;
+﻿namespace ComplianceDashboard.Entities;
 
 public class Operation
 {
-    public string Id { get; set; } = Guid.NewGuid().ToString("N");
+    public string Id { get; set; } = null!;
 
-    public string UserId { get; set; } = string.Empty;
-
-    public User User { get; set; } = null!;
+    public string UserId { get; set; } = null!;
 
     public decimal Amount { get; set; }
 
-    public Currency Currency { get; set; } = Currency.KZT;
+    public string Currency { get; set; } = null!;
 
-    public string RecipientName { get; set; } = string.Empty;
+    public string RecipientName { get; set; } = null!;
 
     public string? RecipientAccount { get; set; }
 
-    public OperationStatus Status { get; set; }
+    public string Status { get; set; } = null!;
 
-    public BlockReasonCode BlockReasonCode { get; set; }
+    public string BlockReasonCode { get; set; } = null!;
 
-    public DateTimeOffset CreatedAt { get; set; } = DateTimeOffset.UtcNow;
+    public DateTime CreatedAt { get; set; }
 
-    public DateTimeOffset UpdatedAt { get; set; } = DateTimeOffset.UtcNow;
+    public DateTime UpdatedAt { get; set; }
 
-    public ICollection<AppealCase> AppealCases { get; set; } = [];
+    public virtual ICollection<AppealCase> AppealCases { get; set; } = new List<AppealCase>();
+
+    public virtual User User { get; set; } = null!;
 }

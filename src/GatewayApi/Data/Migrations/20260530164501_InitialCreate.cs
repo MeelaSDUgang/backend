@@ -5,7 +5,7 @@ using Microsoft.EntityFrameworkCore.Migrations;
 
 #pragma warning disable CA1814 // Prefer jagged arrays over multidimensional
 
-namespace ComplianceDashboard.Data.Migrations
+namespace GatewayApi.Data.Migrations
 {
     /// <inheritdoc />
     public partial class InitialCreate : Migration
@@ -13,6 +13,37 @@ namespace ComplianceDashboard.Data.Migrations
         /// <inheritdoc />
         protected override void Up(MigrationBuilder migrationBuilder)
         {
+            migrationBuilder.CreateTable(
+                name: "BankAdapters",
+                columns: table => new
+                {
+                    Id = table.Column<Guid>(type: "uuid", nullable: false),
+                    RoutingKey = table.Column<string>(type: "character varying(50)", maxLength: 50, nullable: false),
+                    Name = table.Column<string>(type: "character varying(100)", maxLength: 100, nullable: false),
+                    IsActive = table.Column<bool>(type: "boolean", nullable: false),
+                    SupportedGatewayTypes = table.Column<string>(type: "character varying(50)", maxLength: 50, nullable: false)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_BankAdapters", x => x.Id);
+                });
+
+            migrationBuilder.CreateTable(
+                name: "Merchants",
+                columns: table => new
+                {
+                    Id = table.Column<Guid>(type: "uuid", nullable: false),
+                    Name = table.Column<string>(type: "character varying(200)", maxLength: 200, nullable: false),
+                    ApiKey = table.Column<string>(type: "character varying(100)", maxLength: 100, nullable: false),
+                    SecretKeyHash = table.Column<string>(type: "text", nullable: false),
+                    WebhookUrl = table.Column<string>(type: "text", nullable: true),
+                    CreatedAt = table.Column<DateTime>(type: "timestamp with time zone", nullable: false)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_Merchants", x => x.Id);
+                });
+
             migrationBuilder.CreateTable(
                 name: "users",
                 columns: table => new
@@ -27,6 +58,44 @@ namespace ComplianceDashboard.Data.Migrations
                 constraints: table =>
                 {
                     table.PrimaryKey("PK_users", x => x.id);
+                });
+
+            migrationBuilder.CreateTable(
+                name: "Transactions",
+                columns: table => new
+                {
+                    Id = table.Column<Guid>(type: "uuid", nullable: false),
+                    MerchantId = table.Column<Guid>(type: "uuid", nullable: false),
+                    BankId = table.Column<Guid>(type: "uuid", nullable: false),
+                    IdempotencyKey = table.Column<Guid>(type: "uuid", nullable: false),
+                    Account = table.Column<string>(type: "text", nullable: false),
+                    Amount = table.Column<decimal>(type: "numeric(18,2)", precision: 18, scale: 2, nullable: false),
+                    Currency = table.Column<string>(type: "character varying(3)", maxLength: 3, nullable: false),
+                    GatewayType = table.Column<string>(type: "text", nullable: false),
+                    TransactionStatus = table.Column<string>(type: "text", nullable: false),
+                    AiRiskScore = table.Column<int>(type: "integer", nullable: false),
+                    AiRiskReason = table.Column<string>(type: "text", nullable: false),
+                    RawPayload = table.Column<string>(type: "jsonb", nullable: false),
+                    BankReferenceId = table.Column<string>(type: "character varying(100)", maxLength: 100, nullable: true),
+                    FailureReason = table.Column<string>(type: "character varying(500)", maxLength: 500, nullable: true),
+                    CreatedAt = table.Column<DateTime>(type: "timestamp with time zone", nullable: false),
+                    UpdatedAt = table.Column<DateTime>(type: "timestamp with time zone", nullable: false)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_Transactions", x => x.Id);
+                    table.ForeignKey(
+                        name: "FK_Transactions_BankAdapters_BankId",
+                        column: x => x.BankId,
+                        principalTable: "BankAdapters",
+                        principalColumn: "Id",
+                        onDelete: ReferentialAction.Restrict);
+                    table.ForeignKey(
+                        name: "FK_Transactions_Merchants_MerchantId",
+                        column: x => x.MerchantId,
+                        principalTable: "Merchants",
+                        principalColumn: "Id",
+                        onDelete: ReferentialAction.Restrict);
                 });
 
             migrationBuilder.CreateTable(
@@ -219,6 +288,12 @@ namespace ComplianceDashboard.Data.Migrations
                 column: "case_id");
 
             migrationBuilder.CreateIndex(
+                name: "IX_Merchants_ApiKey",
+                table: "Merchants",
+                column: "ApiKey",
+                unique: true);
+
+            migrationBuilder.CreateIndex(
                 name: "IX_operations_status",
                 table: "operations",
                 column: "status");
@@ -232,6 +307,22 @@ namespace ComplianceDashboard.Data.Migrations
                 name: "IX_support_decisions_case_id",
                 table: "support_decisions",
                 column: "case_id");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_Transactions_BankId",
+                table: "Transactions",
+                column: "BankId");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_Transactions_IdempotencyKey_MerchantId",
+                table: "Transactions",
+                columns: new[] { "IdempotencyKey", "MerchantId" },
+                unique: true);
+
+            migrationBuilder.CreateIndex(
+                name: "IX_Transactions_MerchantId",
+                table: "Transactions",
+                column: "MerchantId");
 
             migrationBuilder.CreateIndex(
                 name: "IX_users_phone",
@@ -253,7 +344,16 @@ namespace ComplianceDashboard.Data.Migrations
                 name: "support_decisions");
 
             migrationBuilder.DropTable(
+                name: "Transactions");
+
+            migrationBuilder.DropTable(
                 name: "appeal_cases");
+
+            migrationBuilder.DropTable(
+                name: "BankAdapters");
+
+            migrationBuilder.DropTable(
+                name: "Merchants");
 
             migrationBuilder.DropTable(
                 name: "operations");

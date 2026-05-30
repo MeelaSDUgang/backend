@@ -1,22 +1,16 @@
-using ComplianceDashboard.Enums;
-
-namespace ComplianceDashboard.Entities;
+﻿namespace ComplianceDashboard.Entities;
 
 public class AppealCase
 {
-    public string Id { get; set; } = Guid.NewGuid().ToString("N");
+    public string Id { get; set; } = null!;
 
-    public string UserId { get; set; } = string.Empty;
-
-    public User User { get; set; } = null!;
+    public string UserId { get; set; } = null!;
 
     public string? OperationId { get; set; }
 
-    public Operation? Operation { get; set; }
+    public string CaseType { get; set; } = null!;
 
-    public AppealCaseType CaseType { get; set; }
-
-    public AppealCaseStatus Status { get; set; } = AppealCaseStatus.DRAFT;
+    public string Status { get; set; } = null!;
 
     public string? SupportSummary { get; set; }
 
@@ -24,15 +18,19 @@ public class AppealCase
 
     public string? MissingInfoJson { get; set; }
 
-    public RouteTo RouteTo { get; set; }
+    public string RouteTo { get; set; } = null!;
 
-    public DateTimeOffset CreatedAt { get; set; } = DateTimeOffset.UtcNow;
+    public DateTime CreatedAt { get; set; }
 
-    public DateTimeOffset UpdatedAt { get; set; } = DateTimeOffset.UtcNow;
+    public DateTime UpdatedAt { get; set; }
 
-    public ICollection<AppealAnswer> Answers { get; set; } = [];
+    public virtual ICollection<AppealAnswer> AppealAnswers { get; set; } = new List<AppealAnswer>();
 
-    public ICollection<AppealDocument> Documents { get; set; } = [];
+    public virtual ICollection<AppealDocument> AppealDocuments { get; set; } = new List<AppealDocument>();
 
-    public ICollection<SupportDecision> Decisions { get; set; } = [];
+    public virtual Operation? Operation { get; set; }
+
+    public virtual ICollection<SupportDecision> SupportDecisions { get; set; } = new List<SupportDecision>();
+
+    public virtual User User { get; set; } = null!;
 }

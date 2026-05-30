@@ -8,15 +8,25 @@ services:
     depends_on:
       dashboard-postgres:
         condition: service_healthy
-      redis:
-        condition: service_started
-      rabbitmq:
-        condition: service_started
     environment:
       ConnectionStrings__DefaultConnection: Host=dashboard-postgres;Port=5432;Database=dashboard;Username=postgres;Password=postgres
       ASPNETCORE_URLS: http://+:8080
     ports:
       - "3001:8080"
+  
+  gatewayapi:
+    image: gatewayapi
+    build:
+      context: .
+      dockerfile: src/GatewayApi/Dockerfile
+    depends_on:
+      dashboard-postgres:
+        condition: service_healthy
+    environment:
+      ConnectionStrings__DefaultConnection: Host=dashboard-postgres;Port=5432;Database=dashboard;Username=postgres;Password=postgres
+      ASPNETCORE_URLS: http://+:8080
+    ports:
+      - "3002:8080"
 
   dashboard-postgres:
     image: postgres:16-alpine
@@ -34,31 +44,6 @@ services:
       interval: 5s
       timeout: 5s
       retries: 10
-
-  payment-postgres:
-    image: postgres:16-alpine
-    container_name: payment-postgres
-    environment:
-      POSTGRES_DB: payment
-      POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: postgres
-    ports:
-      - "5433:5432"
-    volumes:
-      - payment-postgres-data:/var/lib/postgresql/data
-
-  redis:
-    image: redis:7-alpine
-    container_name: redis
-    ports:
-      - "6379:6379"
-
-  rabbitmq:
-    image: rabbitmq:3-management-alpine
-    container_name: rabbitmq
-    ports:
-      - "5672:5672"
-      - "15672:15672"
 
 volumes:
   dashboard-postgres-data:

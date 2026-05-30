@@ -9,13 +9,13 @@ namespace ComplianceDashboard.Services;
 
 public class SupportService(DashboardDbContext dbContext) : ISupportService
 {
-    private static readonly AppealCaseStatus[] SupportVisibleStatuses =
+    private static readonly string[] SupportVisibleStatuses =
     [
-        AppealCaseStatus.SUBMITTED,
-        AppealCaseStatus.WAITING_SUPPORT,
-        AppealCaseStatus.NEED_MORE_INFO,
-        AppealCaseStatus.RESOLVED,
-        AppealCaseStatus.ESCALATED
+        nameof(AppealCaseStatus.SUBMITTED),
+        nameof(AppealCaseStatus.WAITING_SUPPORT),
+        nameof(AppealCaseStatus.NEED_MORE_INFO),
+        nameof(AppealCaseStatus.RESOLVED),
+        nameof(AppealCaseStatus.ESCALATED)
     ];
 
     public async Task<IReadOnlyCollection<SupportCaseListItemResponse>> GetSupportCasesAsync(
@@ -61,13 +61,13 @@ public class SupportService(DashboardDbContext dbContext) : ISupportService
         if (appealCase is null)
             return ServiceResult<SubmitSupportDecisionResponse>.Failure(ErrorCodes.NotFound, "Appeal case not found.");
 
-        var now = DateTimeOffset.UtcNow;
+        var now = DateTime.UtcNow;
         var supportDecision = new SupportDecision
         {
             Id = await GetNextIdAsync("decision", dbContext.SupportDecisions.Select(decision => decision.Id),
                 cancellationToken),
             CaseId = appealCase.Id,
-            Decision = decisionType,
+            Decision = decisionType.ToString(),
             Comment = string.IsNullOrWhiteSpace(request.Comment) ? null : request.Comment.Trim(),
             CreatedAt = now
         };
@@ -81,8 +81,8 @@ public class SupportService(DashboardDbContext dbContext) : ISupportService
         return ServiceResult<SubmitSupportDecisionResponse>.Success(
             new SubmitSupportDecisionResponse(
                 true,
-                appealCase.Status.ToString(),
-                appealCase.Operation?.Status.ToString()));
+                appealCase.Status,
+                appealCase.Operation?.Status));
     }
 
     private IQueryable<AppealCase> LoadFullCase(string caseId)
@@ -90,9 +90,9 @@ public class SupportService(DashboardDbContext dbContext) : ISupportService
         return dbContext.AppealCases
             .Include(appealCase => appealCase.User)
             .Include(appealCase => appealCase.Operation)
-            .Include(appealCase => appealCase.Answers)
-            .Include(appealCase => appealCase.Documents)
-            .Include(appealCase => appealCase.Decisions)
+            .Include(appealCase => appealCase.AppealAnswers)
+            .Include(appealCase => appealCase.AppealDocuments)
+            .Include(appealCase => appealCase.SupportDecisions)
             .Where(appealCase => appealCase.Id == caseId);
     }
 
@@ -104,8 +104,8 @@ public class SupportService(DashboardDbContext dbContext) : ISupportService
             GetCaseTypeLabel(appealCase.CaseType),
             appealCase.Operation is null ? null : FormatAmount(appealCase.Operation.Amount),
             appealCase.Operation?.RecipientName,
-            appealCase.Status.ToString(),
-            appealCase.RouteTo.ToString(),
+            appealCase.Status,
+            appealCase.RouteTo,
             appealCase.SupportSummary);
     }
 
@@ -115,15 +115,17 @@ public class SupportService(DashboardDbContext dbContext) : ISupportService
             appealCase.Id,
             ResponseMapper.ToResponse(appealCase.User),
             appealCase.Operation is null ? null : ResponseMapper.ToResponse(appealCase.Operation),
-            appealCase.CaseType.ToString(),
-            appealCase.Status.ToString(),
-            appealCase.RouteTo.ToString(),
-            appealCase.Answers.OrderBy(answer => answer.CreatedAt).Select(ResponseMapper.ToResponse).ToArray(),
-            appealCase.Documents.OrderBy(document => document.CreatedAt).Select(ResponseMapper.ToResponse).ToArray(),
+            appealCase.CaseType,
+            appealCase.Status,
+            appealCase.RouteTo,
+            appealCase.AppealAnswers.OrderBy(answer => answer.CreatedAt).Select(ResponseMapper.ToResponse).ToArray(),
+            appealCase.AppealDocuments.OrderBy(document => document.CreatedAt).Select(ResponseMapper.ToResponse)
+                .ToArray(),
             appealCase.SupportSummary,
             ResponseMapper.ParseMissingInfo(appealCase.MissingInfoJson),
             appealCase.ClientMessage,
-            appealCase.Decisions.OrderBy(decision => decision.CreatedAt).Select(ResponseMapper.ToResponse).ToArray());
+            appealCase.SupportDecisions.OrderBy(decision => decision.CreatedAt).Select(ResponseMapper.ToResponse)
+                .ToArray());
     }
 
     private static void ApplyDecision(AppealCase appealCase, SupportDecisionType decision)
@@ -131,38 +133,38 @@ public class SupportService(DashboardDbContext dbContext) : ISupportService
         switch (decision)
         {
             case SupportDecisionType.CONFIRM_OPERATION:
-                appealCase.Status = AppealCaseStatus.RESOLVED;
+                appealCase.Status = AppealCaseStatus.RESOLVED.ToString();
                 if (appealCase.Operation is not null)
                 {
-                    appealCase.Operation.Status = OperationStatus.SUCCESS;
-                    appealCase.Operation.UpdatedAt = DateTimeOffset.UtcNow;
+                    appealCase.Operation.Status = OperationStatus.SUCCESS.ToString();
+                    appealCase.Operation.UpdatedAt = DateTime.UtcNow;
                 }
 
                 break;
 
             case SupportDecisionType.REQUEST_MORE_INFO:
-                appealCase.Status = AppealCaseStatus.NEED_MORE_INFO;
+                appealCase.Status = AppealCaseStatus.NEED_MORE_INFO.ToString();
                 break;
 
             case SupportDecisionType.KEEP_BLOCKED:
-                appealCase.Status = AppealCaseStatus.RESOLVED;
+                appealCase.Status = AppealCaseStatus.RESOLVED.ToString();
                 if (appealCase.Operation is not null)
                 {
-                    appealCase.Operation.Status = OperationStatus.BLOCKED;
-                    appealCase.Operation.UpdatedAt = DateTimeOffset.UtcNow;
+                    appealCase.Operation.Status = OperationStatus.BLOCKED.ToString();
+                    appealCase.Operation.UpdatedAt = DateTime.UtcNow;
                 }
 
                 break;
 
             case SupportDecisionType.ESCALATE:
-                appealCase.Status = AppealCaseStatus.ESCALATED;
+                appealCase.Status = AppealCaseStatus.ESCALATED.ToString();
                 break;
         }
     }
 
-    private static string GetCaseTypeLabel(AppealCaseType caseType)
+    private static string GetCaseTypeLabel(string caseType)
     {
-        return caseType == AppealCaseType.OPERATION_CONFIRMATION
+        return caseType == AppealCaseType.OPERATION_CONFIRMATION.ToString()
             ? "Подтверждение операции"
             : "Ограничение счета";
     }

@@ -1,18 +1,18 @@
-namespace ComplianceDashboard.Entities;
+﻿namespace ComplianceDashboard.Entities;
 
 public class AppealAnswer
 {
-    public string Id { get; set; } = Guid.NewGuid().ToString("N");
+    public string Id { get; set; } = null!;
 
-    public string CaseId { get; set; } = string.Empty;
+    public string CaseId { get; set; } = null!;
 
-    public AppealCase Case { get; set; } = null!;
+    public string QuestionKey { get; set; } = null!;
 
-    public string QuestionKey { get; set; } = string.Empty;
+    public string QuestionText { get; set; } = null!;
 
-    public string QuestionText { get; set; } = string.Empty;
+    public string Answer { get; set; } = null!;
 
-    public string Answer { get; set; } = string.Empty;
+    public DateTime CreatedAt { get; set; }
 
-    public DateTimeOffset CreatedAt { get; set; } = DateTimeOffset.UtcNow;
+    public virtual AppealCase Case { get; set; } = null!;
 }

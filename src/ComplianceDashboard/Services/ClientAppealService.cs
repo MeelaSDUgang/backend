@@ -28,8 +28,8 @@ public class ClientAppealService(DashboardDbContext dbContext) : IClientAppealSe
         var operation = await dbContext.Operations
             .AsNoTracking()
             .Where(operation => operation.UserId == DemoUserId)
-            .Where(operation => operation.Status == OperationStatus.PENDING_CONFIRMATION ||
-                                operation.Status == OperationStatus.BLOCKED)
+            .Where(operation => operation.Status == OperationStatus.PENDING_CONFIRMATION.ToString() ||
+                                operation.Status == OperationStatus.BLOCKED.ToString())
             .OrderByDescending(operation => operation.CreatedAt)
             .FirstOrDefaultAsync(cancellationToken);
 
@@ -67,16 +67,16 @@ public class ClientAppealService(DashboardDbContext dbContext) : IClientAppealSe
         var userExists = await dbContext.Users.AnyAsync(user => user.Id == userId, cancellationToken);
         if (!userExists) return ServiceResult<AppealCaseResponse>.Failure(ErrorCodes.NotFound, "User not found.");
 
-        var now = DateTimeOffset.UtcNow;
+        var now = DateTime.UtcNow;
         var appealCase = new AppealCase
         {
             Id = await GetNextIdAsync("case", dbContext.AppealCases.Select(appealCase => appealCase.Id),
                 cancellationToken),
             UserId = userId,
             OperationId = operation?.Id,
-            CaseType = caseType,
-            Status = AppealCaseStatus.DRAFT,
-            RouteTo = RouteTo.SUPPORT,
+            CaseType = caseType.ToString(),
+            Status = AppealCaseStatus.DRAFT.ToString(),
+            RouteTo = RouteTo.SUPPORT.ToString(),
             CreatedAt = now,
             UpdatedAt = now
         };
@@ -108,12 +108,12 @@ public class ClientAppealService(DashboardDbContext dbContext) : IClientAppealSe
         CancellationToken cancellationToken)
     {
         var appealCase = await dbContext.AppealCases
-            .Include(appealCase => appealCase.Answers)
+            .Include(appealCase => appealCase.AppealAnswers)
             .FirstOrDefaultAsync(appealCase => appealCase.Id == caseId, cancellationToken);
 
         if (appealCase is null) return ServiceResult<object>.Failure(ErrorCodes.NotFound, "Appeal case not found.");
 
-        if (appealCase.Status != AppealCaseStatus.DRAFT)
+        if (appealCase.Status != AppealCaseStatus.DRAFT.ToString())
             return ServiceResult<object>.Failure(ErrorCodes.CaseAlreadySubmitted, "Case is already submitted.");
 
         if (request.Answers.Count == 0)
@@ -127,8 +127,8 @@ public class ClientAppealService(DashboardDbContext dbContext) : IClientAppealSe
                     ErrorCodes.ValidationError,
                     "Each answer requires questionKey, questionText and answer.");
 
-        dbContext.AppealAnswers.RemoveRange(appealCase.Answers);
-        var now = DateTimeOffset.UtcNow;
+        dbContext.AppealAnswers.RemoveRange(appealCase.AppealAnswers);
+        var now = DateTime.UtcNow;
         var nextAnswerNumber = await GetNextNumberAsync(dbContext.AppealAnswers.Select(answer => answer.Id), "answer",
             cancellationToken);
 
@@ -160,7 +160,7 @@ public class ClientAppealService(DashboardDbContext dbContext) : IClientAppealSe
         if (appealCase is null)
             return ServiceResult<AppealDocumentResponse>.Failure(ErrorCodes.NotFound, "Appeal case not found.");
 
-        if (appealCase.Status != AppealCaseStatus.DRAFT)
+        if (appealCase.Status != AppealCaseStatus.DRAFT.ToString())
             return ServiceResult<AppealDocumentResponse>.Failure(ErrorCodes.CaseAlreadySubmitted,
                 "Case is already submitted.");
 
@@ -170,13 +170,13 @@ public class ClientAppealService(DashboardDbContext dbContext) : IClientAppealSe
         if (string.IsNullOrWhiteSpace(request.FileName))
             return ServiceResult<AppealDocumentResponse>.Failure(ErrorCodes.ValidationError, "fileName is required.");
 
-        var now = DateTimeOffset.UtcNow;
+        var now = DateTime.UtcNow;
         var document = new AppealDocument
         {
             Id = await GetNextIdAsync("doc", dbContext.AppealDocuments.Select(document => document.Id),
                 cancellationToken),
             CaseId = appealCase.Id,
-            DocumentType = documentType,
+            DocumentType = documentType.ToString(),
             FileName = request.FileName.Trim(),
             MockUrl = $"/mock-files/{request.FileName.Trim()}",
             CreatedAt = now
@@ -197,12 +197,12 @@ public class ClientAppealService(DashboardDbContext dbContext) : IClientAppealSe
         if (appealCase is null)
             return ServiceResult<GenerateSupportSummaryResponse>.Failure(ErrorCodes.NotFound, "Appeal case not found.");
 
-        if (appealCase.Status != AppealCaseStatus.DRAFT)
+        if (appealCase.Status != AppealCaseStatus.DRAFT.ToString())
             return ServiceResult<GenerateSupportSummaryResponse>.Failure(
                 ErrorCodes.CaseAlreadySubmitted,
                 "Case is already submitted.");
 
-        var answers = appealCase.Answers.ToDictionary(answer => answer.QuestionKey, answer => answer.Answer);
+        var answers = appealCase.AppealAnswers.ToDictionary(answer => answer.QuestionKey, answer => answer.Answer);
         var confirmation = GetAnswer(answers, "client_confirmed_operation");
         var paymentPurpose = GetAnswer(answers, "payment_purpose_other");
         if (string.IsNullOrWhiteSpace(paymentPurpose)) paymentPurpose = GetAnswer(answers, "payment_purpose");
@@ -213,20 +213,20 @@ public class ClientAppealService(DashboardDbContext dbContext) : IClientAppealSe
         var supportSummary = BuildSupportSummary(appealCase, confirmation, paymentPurpose, recipientRelation);
         var clientMessage = BuildClientMessage(confirmation);
 
-        appealCase.Status = AppealCaseStatus.SUBMITTED;
-        appealCase.RouteTo = routeTo;
+        appealCase.Status = AppealCaseStatus.SUBMITTED.ToString();
+        appealCase.RouteTo = routeTo.ToString();
         appealCase.SupportSummary = supportSummary;
         appealCase.ClientMessage = clientMessage;
         appealCase.MissingInfoJson = JsonSerializer.Serialize(missingInfo);
-        appealCase.UpdatedAt = DateTimeOffset.UtcNow;
+        appealCase.UpdatedAt = DateTime.UtcNow;
 
         await dbContext.SaveChangesAsync(cancellationToken);
 
         return ServiceResult<GenerateSupportSummaryResponse>.Success(
             new GenerateSupportSummaryResponse(
                 appealCase.Id,
-                appealCase.Status.ToString(),
-                appealCase.RouteTo.ToString(),
+                appealCase.Status,
+                appealCase.RouteTo,
                 supportSummary,
                 missingInfo,
                 clientMessage));
@@ -237,9 +237,9 @@ public class ClientAppealService(DashboardDbContext dbContext) : IClientAppealSe
         return dbContext.AppealCases
             .Include(appealCase => appealCase.User)
             .Include(appealCase => appealCase.Operation)
-            .Include(appealCase => appealCase.Answers)
-            .Include(appealCase => appealCase.Documents)
-            .Include(appealCase => appealCase.Decisions)
+            .Include(appealCase => appealCase.AppealAnswers)
+            .Include(appealCase => appealCase.AppealDocuments)
+            .Include(appealCase => appealCase.SupportDecisions)
             .Where(appealCase => appealCase.Id == caseId);
     }
 
@@ -249,7 +249,7 @@ public class ClientAppealService(DashboardDbContext dbContext) : IClientAppealSe
         string? paymentPurpose,
         string? recipientRelation)
     {
-        if (appealCase.CaseType == AppealCaseType.ACCOUNT_BLOCK_APPEAL)
+        if (appealCase.CaseType == AppealCaseType.ACCOUNT_BLOCK_APPEAL.ToString())
             return
                 "Клиент подал обращение по ограничению счета. Специалисту нужно проверить пояснение клиента и запрошенные документы.";
 
@@ -260,8 +260,8 @@ public class ClientAppealService(DashboardDbContext dbContext) : IClientAppealSe
         var amount = appealCase.Operation is null ? "заблокированную сумму" : FormatAmount(appealCase.Operation.Amount);
         var purpose = string.IsNullOrWhiteSpace(paymentPurpose) ? "не указано" : paymentPurpose;
         var relation = string.IsNullOrWhiteSpace(recipientRelation) ? "не указано" : recipientRelation;
-        var documentsPart = appealCase.Documents.Count > 0
-            ? $"Клиент приложил документ: {appealCase.Documents.First().FileName}."
+        var documentsPart = appealCase.AppealDocuments.Count > 0
+            ? $"Клиент приложил документ: {appealCase.AppealDocuments.First().FileName}."
             : "Подтверждающие документы не приложены.";
 
         return
@@ -284,10 +284,10 @@ public class ClientAppealService(DashboardDbContext dbContext) : IClientAppealSe
     {
         var missingInfo = new List<string>();
 
-        if (appealCase.Documents.Count == 0) missingInfo.Add("Не приложены подтверждающие документы");
+        if (appealCase.AppealDocuments.Count == 0) missingInfo.Add("Не приложены подтверждающие документы");
 
-        var hasCheckOrContract = appealCase.Documents.Any(document =>
-            document.DocumentType is DocumentType.CHECK or DocumentType.CONTRACT);
+        var hasCheckOrContract = appealCase.AppealDocuments.Any(document =>
+            document.DocumentType is "CHECK" or "CONTRACT");
 
         if (ContainsAny(paymentPurpose, "покупка товара", "purchase") && !hasCheckOrContract)
             missingInfo.Add("Чек оплаты или договор купли-продажи отсутствует");
@@ -298,9 +298,9 @@ public class ClientAppealService(DashboardDbContext dbContext) : IClientAppealSe
         return missingInfo;
     }
 
-    private static RouteTo ResolveRoute(AppealCaseType caseType, string? confirmation, string? recipientRelation)
+    private static RouteTo ResolveRoute(string caseType, string? confirmation, string? recipientRelation)
     {
-        if (caseType == AppealCaseType.ACCOUNT_BLOCK_APPEAL) return RouteTo.COMPLIANCE;
+        if (caseType == AppealCaseType.ACCOUNT_BLOCK_APPEAL.ToString()) return RouteTo.COMPLIANCE;
 
         if (ContainsAny(confirmation, "нет", "no") ||
             ContainsAny(recipientRelation, "продавец", "seller", "не знаю", "unknown"))

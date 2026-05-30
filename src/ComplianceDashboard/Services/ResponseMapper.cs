@@ -8,7 +8,7 @@ internal static class ResponseMapper
 {
     public static UserResponse ToResponse(User user)
     {
-        return new UserResponse(user.Id, user.FullName, user.Phone, user.AccountStatus.ToString());
+        return new UserResponse(user.Id, user.FullName, user.Phone, user.AccountStatus);
     }
 
     public static OperationResponse ToResponse(Operation operation)
@@ -17,11 +17,11 @@ internal static class ResponseMapper
             operation.Id,
             operation.UserId,
             operation.Amount,
-            operation.Currency.ToString(),
+            operation.Currency,
             operation.RecipientName,
             operation.RecipientAccount,
-            operation.Status.ToString(),
-            operation.BlockReasonCode.ToString(),
+            operation.Status,
+            operation.BlockReasonCode,
             operation.CreatedAt);
     }
 
@@ -41,7 +41,7 @@ internal static class ResponseMapper
         return new AppealDocumentResponse(
             document.Id,
             document.CaseId,
-            document.DocumentType.ToString(),
+            document.DocumentType,
             document.FileName,
             document.MockUrl,
             document.CreatedAt);
@@ -52,7 +52,7 @@ internal static class ResponseMapper
         return new SupportDecisionResponse(
             decision.Id,
             decision.CaseId,
-            decision.Decision.ToString(),
+            decision.Decision,
             decision.Comment,
             decision.CreatedAt);
     }
@@ -63,17 +63,17 @@ internal static class ResponseMapper
             appealCase.Id,
             appealCase.UserId,
             appealCase.OperationId,
-            appealCase.CaseType.ToString(),
-            appealCase.Status.ToString(),
-            appealCase.RouteTo.ToString(),
+            appealCase.CaseType,
+            appealCase.Status,
+            appealCase.RouteTo,
             appealCase.SupportSummary,
             appealCase.ClientMessage,
             ParseMissingInfo(appealCase.MissingInfoJson),
             includeNestedData && appealCase.User is not null ? ToResponse(appealCase.User) : null,
             includeNestedData && appealCase.Operation is not null ? ToResponse(appealCase.Operation) : null,
-            appealCase.Answers.OrderBy(answer => answer.CreatedAt).Select(ToResponse).ToArray(),
-            appealCase.Documents.OrderBy(document => document.CreatedAt).Select(ToResponse).ToArray(),
-            appealCase.Decisions.OrderBy(decision => decision.CreatedAt).Select(ToResponse).ToArray(),
+            appealCase.AppealAnswers.OrderBy(answer => answer.CreatedAt).Select(ToResponse).ToArray(),
+            appealCase.AppealDocuments.OrderBy(document => document.CreatedAt).Select(ToResponse).ToArray(),
+            appealCase.SupportDecisions.OrderBy(decision => decision.CreatedAt).Select(ToResponse).ToArray(),
             appealCase.CreatedAt,
             appealCase.UpdatedAt);
     }

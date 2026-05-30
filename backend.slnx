@@ -4,5 +4,6 @@
     </Folder>
     <Folder Name="/src/">
         <Project Path="src/ComplianceDashboard/ComplianceDashboard.csproj"/>
+        <Project Path="src/GatewayApi/GatewayApi.csproj"/>
     </Folder>
 </Solution>

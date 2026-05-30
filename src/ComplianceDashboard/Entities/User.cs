@@ -1,22 +1,20 @@
-using ComplianceDashboard.Enums;
-
-namespace ComplianceDashboard.Entities;
+﻿namespace ComplianceDashboard.Entities;
 
 public class User
 {
-    public string Id { get; set; } = Guid.NewGuid().ToString("N");
+    public string Id { get; set; } = null!;
 
-    public string FullName { get; set; } = string.Empty;
+    public string FullName { get; set; } = null!;
 
-    public string Phone { get; set; } = string.Empty;
+    public string Phone { get; set; } = null!;
 
-    public AccountStatus AccountStatus { get; set; } = AccountStatus.ACTIVE;
+    public string AccountStatus { get; set; } = null!;
 
-    public DateTimeOffset CreatedAt { get; set; } = DateTimeOffset.UtcNow;
+    public DateTime CreatedAt { get; set; }
 
-    public DateTimeOffset UpdatedAt { get; set; } = DateTimeOffset.UtcNow;
+    public DateTime UpdatedAt { get; set; }
 
-    public ICollection<Operation> Operations { get; set; } = [];
+    public virtual ICollection<AppealCase> AppealCases { get; set; } = new List<AppealCase>();
 
-    public ICollection<AppealCase> AppealCases { get; set; } = [];
+    public virtual ICollection<Operation> Operations { get; set; } = new List<Operation>();
 }
