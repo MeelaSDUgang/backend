@@ -6,6 +6,9 @@
 # dotenv files
 .env
 
+# prompt files
+prompt.md
+
 # User-specific files
 *.rsuser
 *.suo

@@ -8,6 +8,8 @@ services:
       - dashboard-postgres
       - redis
       - rabbitmq
+    environment:
+      ConnectionStrings__DefaultConnection: Host=dashboard-postgres;Port=5432;Database=dashboard;Username=postgres;Password=postgres
 
   dashboard-postgres:
     image: postgres:16-alpine
