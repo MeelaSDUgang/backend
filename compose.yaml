@@ -1,15 +1,22 @@
 services:
   compliancedashboard:
     image: compliancedashboard
+    restart: on-failure
     build:
       context: .
       dockerfile: src/ComplianceDashboard/Dockerfile
     depends_on:
-      - dashboard-postgres
-      - redis
-      - rabbitmq
+      dashboard-postgres:
+        condition: service_healthy
+      redis:
+        condition: service_started
+      rabbitmq:
+        condition: service_started
     environment:
       ConnectionStrings__DefaultConnection: Host=dashboard-postgres;Port=5432;Database=dashboard;Username=postgres;Password=postgres
+      ASPNETCORE_URLS: http://+:8080
+    ports:
+      - "3001:8080"
 
   dashboard-postgres:
     image: postgres:16-alpine
@@ -22,6 +29,11 @@ services:
       - "5432:5432"
     volumes:
       - dashboard-postgres-data:/var/lib/postgresql/data
+    healthcheck:
+      test: [ "CMD-SHELL", "pg_isready -U postgres -d dashboard" ]
+      interval: 5s
+      timeout: 5s
+      retries: 10
 
   payment-postgres:
     image: postgres:16-alpine
