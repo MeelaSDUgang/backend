@@ -1,20 +1,10 @@
 using GatewayApi.Entities;
-using GatewayApi.Enums;
 using Microsoft.EntityFrameworkCore;
 
 namespace GatewayApi.Data;
 
 public class AppDbContext : DbContext
 {
-    private static readonly DateTimeOffset SeedCreatedAt = new(2026, 5, 30, 10, 30, 0, TimeSpan.Zero);
-    private static readonly Guid SeedUser1Id = Guid.Parse("11111111-1111-1111-1111-111111111111");
-    private static readonly Guid SeedUser2Id = Guid.Parse("22222222-2222-2222-2222-222222222222");
-    private static readonly Guid SeedUser3Id = Guid.Parse("33333333-3333-3333-3333-333333333333");
-    private static readonly Guid SeedOperation1Id = Guid.Parse("aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaa1");
-    private static readonly Guid SeedOperation3Id = Guid.Parse("aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaa3");
-    private static readonly Guid SeedCase2Id = Guid.Parse("cccccccc-cccc-cccc-cccc-ccccccccccc2");
-    private static readonly Guid SeedCase3Id = Guid.Parse("cccccccc-cccc-cccc-cccc-ccccccccccc3");
-
     public AppDbContext(DbContextOptions<AppDbContext> options) : base(options)
     {
     }
@@ -44,6 +34,7 @@ public class AppDbContext : DbContext
 
             entity.HasIndex(m => m.ApiKey).IsUnique();
             entity.Property(m => m.ApiKey).IsRequired().HasMaxLength(100);
+            entity.Property(m => m.PasswordHash).IsRequired().HasMaxLength(512);
         });
 
         modelBuilder.Entity<BankAdapter>(entity =>
@@ -148,7 +139,6 @@ public class AppDbContext : DbContext
         ConfigureAppealAnswers(modelBuilder);
         ConfigureAppealDocuments(modelBuilder);
         ConfigureSupportDecisions(modelBuilder);
-        SeedDemoData(modelBuilder);
     }
 
     private static void ConfigureUsers(ModelBuilder builder)
@@ -165,6 +155,10 @@ public class AppDbContext : DbContext
                 .HasColumnName("account_status")
                 .HasConversion<string>()
                 .HasMaxLength(16)
+                .IsRequired();
+            entity.Property(user => user.PasswordHash)
+                .HasColumnName("password_hash")
+                .HasMaxLength(512)
                 .IsRequired();
             entity.Property(user => user.CreatedAt)
                 .HasColumnName("created_at")
@@ -390,104 +384,5 @@ public class AppDbContext : DbContext
 
             entity.HasIndex(decision => decision.CaseId);
         });
-    }
-
-    private static void SeedDemoData(ModelBuilder builder)
-    {
-        builder.Entity<User>().HasData(
-            new
-            {
-                Id = SeedUser1Id,
-                FullName = "Andrey K.",
-                Phone = "+7 777 000 00 00",
-                ApiKey = "demo-user-1-api-key",
-                SecretKeyHash = "demo-user-1-secret-hash",
-                AccountStatus = AccountStatus.LIMITED,
-                CreatedAt = SeedCreatedAt,
-                UpdatedAt = SeedCreatedAt
-            },
-            new
-            {
-                Id = SeedUser2Id,
-                FullName = "Client Account Appeal",
-                Phone = "+7 777 000 00 02",
-                ApiKey = "demo-user-2-api-key",
-                SecretKeyHash = "demo-user-2-secret-hash",
-                AccountStatus = AccountStatus.LIMITED,
-                CreatedAt = SeedCreatedAt,
-                UpdatedAt = SeedCreatedAt
-            },
-            new
-            {
-                Id = SeedUser3Id,
-                FullName = "Client Operation Confirmation",
-                Phone = "+7 777 000 00 03",
-                ApiKey = "demo-user-3-api-key",
-                SecretKeyHash = "demo-user-3-secret-hash",
-                AccountStatus = AccountStatus.ACTIVE,
-                CreatedAt = SeedCreatedAt,
-                UpdatedAt = SeedCreatedAt
-            });
-
-        builder.Entity<Operation>().HasData(
-            new
-            {
-                Id = SeedOperation1Id,
-                UserId = SeedUser1Id,
-                Amount = 250000m,
-                Currency = Currency.KZT,
-                RecipientName = "Alisher M.",
-                RecipientAccount = "KZ00 **** **** 1234",
-                Status = OperationStatus.PENDING_CONFIRMATION,
-                BlockReasonCode = BlockReasonCode.CLIENT_CONFIRMATION_REQUIRED,
-                CreatedAt = SeedCreatedAt,
-                UpdatedAt = SeedCreatedAt
-            },
-            new
-            {
-                Id = SeedOperation3Id,
-                UserId = SeedUser3Id,
-                Amount = 45000m,
-                Currency = Currency.KZT,
-                RecipientName = "Service Company",
-                RecipientAccount = "KZ00 **** **** 9876",
-                Status = OperationStatus.PENDING_CONFIRMATION,
-                BlockReasonCode = BlockReasonCode.CLIENT_CONFIRMATION_REQUIRED,
-                CreatedAt = SeedCreatedAt,
-                UpdatedAt = SeedCreatedAt
-            });
-
-        builder.Entity<AppealCase>().HasData(
-            new
-            {
-                Id = SeedCase2Id,
-                UserId = SeedUser2Id,
-                OperationId = (Guid?)null,
-                CaseType = AppealCaseType.ACCOUNT_BLOCK_APPEAL,
-                Status = AppealCaseStatus.NEED_MORE_INFO,
-                SupportSummary =
-                    "Client reported account restriction after several incoming transfers. Supporting documents are not attached yet.",
-                ClientMessage = (string?)null,
-                MissingInfoJson =
-                    "[\"Source of funds confirmation is required\", \"Purpose of incoming transfers is required\"]",
-                RouteTo = RouteTo.COMPLIANCE,
-                CreatedAt = SeedCreatedAt,
-                UpdatedAt = SeedCreatedAt
-            },
-            new
-            {
-                Id = SeedCase3Id,
-                UserId = SeedUser3Id,
-                OperationId = (Guid?)SeedOperation3Id,
-                CaseType = AppealCaseType.OPERATION_CONFIRMATION,
-                Status = AppealCaseStatus.SUBMITTED,
-                SupportSummary =
-                    "Client confirmed service payment. Recipient is a company/service. Payment check is attached.",
-                ClientMessage = (string?)null,
-                MissingInfoJson = "[]",
-                RouteTo = RouteTo.SUPPORT,
-                CreatedAt = SeedCreatedAt,
-                UpdatedAt = SeedCreatedAt
-            });
     }
 }

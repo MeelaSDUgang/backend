@@ -12,6 +12,8 @@ public class User
 
     public string SecretKeyHash { get; set; } = null!;
 
+    public string PasswordHash { get; set; } = null!;
+
     public string AccountStatus { get; set; } = null!;
 
     public DateTime CreatedAt { get; set; }

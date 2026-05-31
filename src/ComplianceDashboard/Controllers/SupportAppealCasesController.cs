@@ -1,10 +1,12 @@
 using ComplianceDashboard.Contracts;
 using ComplianceDashboard.Contracts.Support;
 using ComplianceDashboard.Services;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
 namespace ComplianceDashboard.Controllers;
 
+[Authorize]
 [Route("api/support/appeal-cases")]
 [Tags("Support Dashboard")]
 public class SupportAppealCasesController(ISupportService supportService) : ApiControllerBase

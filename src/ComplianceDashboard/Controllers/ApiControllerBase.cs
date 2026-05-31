@@ -1,3 +1,4 @@
+using System.Security.Claims;
 using ComplianceDashboard.Contracts;
 using ComplianceDashboard.Services;
 using Microsoft.AspNetCore.Mvc;
@@ -7,6 +8,12 @@ namespace ComplianceDashboard.Controllers;
 [ApiController]
 public abstract class ApiControllerBase : ControllerBase
 {
+    protected bool TryGetCurrentUserId(out Guid userId)
+    {
+        var claimValue = User.FindFirstValue("user_id") ?? User.FindFirstValue(ClaimTypes.NameIdentifier);
+        return Guid.TryParse(claimValue, out userId);
+    }
+
     protected ActionResult<T> FromServiceResult<T>(ServiceResult<T> result)
     {
         if (result.Succeeded) return Ok(result.Value);

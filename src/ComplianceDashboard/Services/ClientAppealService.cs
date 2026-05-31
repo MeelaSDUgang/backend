@@ -10,24 +10,24 @@ namespace ComplianceDashboard.Services;
 
 public class ClientAppealService(DashboardDbContext dbContext) : IClientAppealService
 {
-    private static readonly Guid DemoUserId = Guid.Parse("11111111-1111-1111-1111-111111111111");
-
-    public async Task<ServiceResult<UserResponse>> GetCurrentUserAsync(CancellationToken cancellationToken)
+    public async Task<ServiceResult<UserResponse>> GetCurrentUserAsync(Guid userId, CancellationToken cancellationToken)
     {
         var user = await dbContext.Users
             .AsNoTracking()
-            .FirstOrDefaultAsync(user => user.Id == DemoUserId, cancellationToken);
+            .FirstOrDefaultAsync(user => user.Id == userId, cancellationToken);
 
         return user is null
-            ? ServiceResult<UserResponse>.Failure(ErrorCodes.NotFound, "Demo user not found.")
+            ? ServiceResult<UserResponse>.Failure(ErrorCodes.NotFound, "User not found.")
             : ServiceResult<UserResponse>.Success(ResponseMapper.ToResponse(user));
     }
 
-    public async Task<ServiceResult<OperationResponse>> GetBlockedOperationAsync(CancellationToken cancellationToken)
+    public async Task<ServiceResult<OperationResponse>> GetBlockedOperationAsync(
+        Guid userId,
+        CancellationToken cancellationToken)
     {
         var operation = await dbContext.Operations
             .AsNoTracking()
-            .Where(operation => operation.UserId == DemoUserId)
+            .Where(operation => operation.UserId == userId)
             .Where(operation => operation.Status == OperationStatus.PENDING_CONFIRMATION.ToString() ||
                                 operation.Status == OperationStatus.BLOCKED.ToString())
             .OrderByDescending(operation => operation.CreatedAt)
@@ -39,6 +39,7 @@ public class ClientAppealService(DashboardDbContext dbContext) : IClientAppealSe
     }
 
     public async Task<ServiceResult<AppealCaseResponse>> CreateAppealCaseAsync(
+        Guid userId,
         CreateAppealCaseRequest request,
         CancellationToken cancellationToken)
     {
@@ -46,7 +47,6 @@ public class ClientAppealService(DashboardDbContext dbContext) : IClientAppealSe
             return ServiceResult<AppealCaseResponse>.Failure(ErrorCodes.ValidationError, "Invalid caseType.");
 
         Operation? operation = null;
-        var userId = DemoUserId;
 
         if (caseType == AppealCaseType.OPERATION_CONFIRMATION)
         {
@@ -57,12 +57,12 @@ public class ClientAppealService(DashboardDbContext dbContext) : IClientAppealSe
                     "Valid operationId is required for OPERATION_CONFIRMATION.");
 
             operation = await dbContext.Operations
-                .FirstOrDefaultAsync(operation => operation.Id == operationId, cancellationToken);
+                .FirstOrDefaultAsync(
+                    operation => operation.Id == operationId && operation.UserId == userId,
+                    cancellationToken);
 
             if (operation is null)
                 return ServiceResult<AppealCaseResponse>.Failure(ErrorCodes.NotFound, "Operation not found.");
-
-            userId = operation.UserId;
         }
 
         var userExists = await dbContext.Users.AnyAsync(user => user.Id == userId, cancellationToken);
@@ -92,13 +92,16 @@ public class ClientAppealService(DashboardDbContext dbContext) : IClientAppealSe
     }
 
     public async Task<ServiceResult<AppealCaseResponse>> GetAppealCaseAsync(
+        Guid userId,
         string caseId,
         CancellationToken cancellationToken)
     {
         if (!Guid.TryParse(caseId, out var parsedCaseId))
             return ServiceResult<AppealCaseResponse>.Failure(ErrorCodes.NotFound, "Appeal case not found.");
 
-        var appealCase = await LoadFullCase(parsedCaseId).AsNoTracking().FirstOrDefaultAsync(cancellationToken);
+        var appealCase = await LoadFullCase(parsedCaseId, userId)
+            .AsNoTracking()
+            .FirstOrDefaultAsync(cancellationToken);
 
         return appealCase is null
             ? ServiceResult<AppealCaseResponse>.Failure(ErrorCodes.NotFound, "Appeal case not found.")
@@ -106,6 +109,7 @@ public class ClientAppealService(DashboardDbContext dbContext) : IClientAppealSe
     }
 
     public async Task<ServiceResult<object>> SaveAnswersAsync(
+        Guid userId,
         string caseId,
         SaveAppealAnswersRequest request,
         CancellationToken cancellationToken)
@@ -115,7 +119,9 @@ public class ClientAppealService(DashboardDbContext dbContext) : IClientAppealSe
 
         var appealCase = await dbContext.AppealCases
             .Include(appealCase => appealCase.AppealAnswers)
-            .FirstOrDefaultAsync(appealCase => appealCase.Id == parsedCaseId, cancellationToken);
+            .FirstOrDefaultAsync(
+                appealCase => appealCase.Id == parsedCaseId && appealCase.UserId == userId,
+                cancellationToken);
 
         if (appealCase is null) return ServiceResult<object>.Failure(ErrorCodes.NotFound, "Appeal case not found.");
 
@@ -154,6 +160,7 @@ public class ClientAppealService(DashboardDbContext dbContext) : IClientAppealSe
     }
 
     public async Task<ServiceResult<AppealDocumentResponse>> AddDocumentAsync(
+        Guid userId,
         string caseId,
         AddAppealDocumentRequest request,
         CancellationToken cancellationToken)
@@ -162,7 +169,9 @@ public class ClientAppealService(DashboardDbContext dbContext) : IClientAppealSe
             return ServiceResult<AppealDocumentResponse>.Failure(ErrorCodes.NotFound, "Appeal case not found.");
 
         var appealCase = await dbContext.AppealCases
-            .FirstOrDefaultAsync(appealCase => appealCase.Id == parsedCaseId, cancellationToken);
+            .FirstOrDefaultAsync(
+                appealCase => appealCase.Id == parsedCaseId && appealCase.UserId == userId,
+                cancellationToken);
 
         if (appealCase is null)
             return ServiceResult<AppealDocumentResponse>.Failure(ErrorCodes.NotFound, "Appeal case not found.");
@@ -196,13 +205,14 @@ public class ClientAppealService(DashboardDbContext dbContext) : IClientAppealSe
     }
 
     public async Task<ServiceResult<GenerateSupportSummaryResponse>> GenerateSupportSummaryAsync(
+        Guid userId,
         string caseId,
         CancellationToken cancellationToken)
     {
         if (!Guid.TryParse(caseId, out var parsedCaseId))
             return ServiceResult<GenerateSupportSummaryResponse>.Failure(ErrorCodes.NotFound, "Appeal case not found.");
 
-        var appealCase = await LoadFullCase(parsedCaseId).FirstOrDefaultAsync(cancellationToken);
+        var appealCase = await LoadFullCase(parsedCaseId, userId).FirstOrDefaultAsync(cancellationToken);
         if (appealCase is null)
             return ServiceResult<GenerateSupportSummaryResponse>.Failure(ErrorCodes.NotFound, "Appeal case not found.");
 
@@ -241,7 +251,7 @@ public class ClientAppealService(DashboardDbContext dbContext) : IClientAppealSe
                 clientMessage));
     }
 
-    private IQueryable<AppealCase> LoadFullCase(Guid caseId)
+    private IQueryable<AppealCase> LoadFullCase(Guid caseId, Guid userId)
     {
         return dbContext.AppealCases
             .Include(appealCase => appealCase.User)
@@ -249,7 +259,7 @@ public class ClientAppealService(DashboardDbContext dbContext) : IClientAppealSe
             .Include(appealCase => appealCase.AppealAnswers)
             .Include(appealCase => appealCase.AppealDocuments)
             .Include(appealCase => appealCase.SupportDecisions)
-            .Where(appealCase => appealCase.Id == caseId);
+            .Where(appealCase => appealCase.Id == caseId && appealCase.UserId == userId);
     }
 
     private static string BuildSupportSummary(

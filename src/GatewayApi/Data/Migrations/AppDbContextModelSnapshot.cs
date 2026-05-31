@@ -131,33 +131,6 @@ namespace GatewayApi.Data.Migrations
                     b.HasIndex("UserId");
 
                     b.ToTable("appeal_cases", (string)null);
-
-                    b.HasData(
-                        new
-                        {
-                            Id = new Guid("cccccccc-cccc-cccc-cccc-ccccccccccc2"),
-                            CaseType = "ACCOUNT_BLOCK_APPEAL",
-                            CreatedAt = new DateTimeOffset(new DateTime(2026, 5, 30, 10, 30, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0)),
-                            MissingInfoJson = "[\"Source of funds confirmation is required\", \"Purpose of incoming transfers is required\"]",
-                            RouteTo = "COMPLIANCE",
-                            Status = "NEED_MORE_INFO",
-                            SupportSummary = "Client reported account restriction after several incoming transfers. Supporting documents are not attached yet.",
-                            UpdatedAt = new DateTimeOffset(new DateTime(2026, 5, 30, 10, 30, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0)),
-                            UserId = new Guid("22222222-2222-2222-2222-222222222222")
-                        },
-                        new
-                        {
-                            Id = new Guid("cccccccc-cccc-cccc-cccc-ccccccccccc3"),
-                            CaseType = "OPERATION_CONFIRMATION",
-                            CreatedAt = new DateTimeOffset(new DateTime(2026, 5, 30, 10, 30, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0)),
-                            MissingInfoJson = "[]",
-                            OperationId = new Guid("aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaa3"),
-                            RouteTo = "SUPPORT",
-                            Status = "SUBMITTED",
-                            SupportSummary = "Client confirmed service payment. Recipient is a company/service. Payment check is attached.",
-                            UpdatedAt = new DateTimeOffset(new DateTime(2026, 5, 30, 10, 30, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0)),
-                            UserId = new Guid("33333333-3333-3333-3333-333333333333")
-                        });
                 });
 
             modelBuilder.Entity("GatewayApi.Entities.AppealDocument", b =>
@@ -357,34 +330,6 @@ namespace GatewayApi.Data.Migrations
                     b.HasIndex("UserId");
 
                     b.ToTable("operations", (string)null);
-
-                    b.HasData(
-                        new
-                        {
-                            Id = new Guid("aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaa1"),
-                            Amount = 250000m,
-                            BlockReasonCode = "CLIENT_CONFIRMATION_REQUIRED",
-                            CreatedAt = new DateTimeOffset(new DateTime(2026, 5, 30, 10, 30, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0)),
-                            Currency = "KZT",
-                            RecipientAccount = "KZ00 **** **** 1234",
-                            RecipientName = "Alisher M.",
-                            Status = "PENDING_CONFIRMATION",
-                            UpdatedAt = new DateTimeOffset(new DateTime(2026, 5, 30, 10, 30, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0)),
-                            UserId = new Guid("11111111-1111-1111-1111-111111111111")
-                        },
-                        new
-                        {
-                            Id = new Guid("aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaa3"),
-                            Amount = 45000m,
-                            BlockReasonCode = "CLIENT_CONFIRMATION_REQUIRED",
-                            CreatedAt = new DateTimeOffset(new DateTime(2026, 5, 30, 10, 30, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0)),
-                            Currency = "KZT",
-                            RecipientAccount = "KZ00 **** **** 9876",
-                            RecipientName = "Service Company",
-                            Status = "PENDING_CONFIRMATION",
-                            UpdatedAt = new DateTimeOffset(new DateTime(2026, 5, 30, 10, 30, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0)),
-                            UserId = new Guid("33333333-3333-3333-3333-333333333333")
-                        });
                 });
 
             modelBuilder.Entity("GatewayApi.Entities.SupportDecision", b =>
@@ -545,6 +490,12 @@ namespace GatewayApi.Data.Migrations
                         .HasColumnType("character varying(200)")
                         .HasColumnName("full_name");
 
+                    b.Property<string>("PasswordHash")
+                        .IsRequired()
+                        .HasMaxLength(512)
+                        .HasColumnType("character varying(512)")
+                        .HasColumnName("password_hash");
+
                     b.Property<string>("Phone")
                         .IsRequired()
                         .HasMaxLength(32)
@@ -568,41 +519,6 @@ namespace GatewayApi.Data.Migrations
                         .IsUnique();
 
                     b.ToTable("users", (string)null);
-
-                    b.HasData(
-                        new
-                        {
-                            Id = new Guid("11111111-1111-1111-1111-111111111111"),
-                            AccountStatus = "LIMITED",
-                            ApiKey = "demo-user-1-api-key",
-                            CreatedAt = new DateTimeOffset(new DateTime(2026, 5, 30, 10, 30, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0)),
-                            FullName = "Andrey K.",
-                            Phone = "+7 777 000 00 00",
-                            SecretKeyHash = "demo-user-1-secret-hash",
-                            UpdatedAt = new DateTimeOffset(new DateTime(2026, 5, 30, 10, 30, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0))
-                        },
-                        new
-                        {
-                            Id = new Guid("22222222-2222-2222-2222-222222222222"),
-                            AccountStatus = "LIMITED",
-                            ApiKey = "demo-user-2-api-key",
-                            CreatedAt = new DateTimeOffset(new DateTime(2026, 5, 30, 10, 30, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0)),
-                            FullName = "Client Account Appeal",
-                            Phone = "+7 777 000 00 02",
-                            SecretKeyHash = "demo-user-2-secret-hash",
-                            UpdatedAt = new DateTimeOffset(new DateTime(2026, 5, 30, 10, 30, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0))
-                        },
-                        new
-                        {
-                            Id = new Guid("33333333-3333-3333-3333-333333333333"),
-                            AccountStatus = "ACTIVE",
-                            ApiKey = "demo-user-3-api-key",
-                            CreatedAt = new DateTimeOffset(new DateTime(2026, 5, 30, 10, 30, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0)),
-                            FullName = "Client Operation Confirmation",
-                            Phone = "+7 777 000 00 03",
-                            SecretKeyHash = "demo-user-3-secret-hash",
-                            UpdatedAt = new DateTimeOffset(new DateTime(2026, 5, 30, 10, 30, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0))
-                        });
                 });
 
             modelBuilder.Entity("GatewayApi.Entities.AppealAnswer", b =>

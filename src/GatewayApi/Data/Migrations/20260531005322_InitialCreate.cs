@@ -3,8 +3,6 @@ using Microsoft.EntityFrameworkCore.Migrations;
 
 #nullable disable
 
-#pragma warning disable CA1814 // Prefer jagged arrays over multidimensional
-
 namespace GatewayApi.Data.Migrations
 {
     /// <inheritdoc />
@@ -37,6 +35,7 @@ namespace GatewayApi.Data.Migrations
                     phone = table.Column<string>(type: "character varying(32)", maxLength: 32, nullable: false),
                     ApiKey = table.Column<string>(type: "character varying(100)", maxLength: 100, nullable: false),
                     SecretKeyHash = table.Column<string>(type: "text", nullable: false),
+                    password_hash = table.Column<string>(type: "character varying(512)", maxLength: 512, nullable: false),
                     account_status = table.Column<string>(type: "character varying(16)", maxLength: 16, nullable: false),
                     created_at = table.Column<DateTimeOffset>(type: "timestamp with time zone", nullable: false),
                     updated_at = table.Column<DateTimeOffset>(type: "timestamp with time zone", nullable: false)
@@ -239,35 +238,6 @@ namespace GatewayApi.Data.Migrations
                         principalColumn: "id",
                         onDelete: ReferentialAction.Cascade);
                 });
-
-            migrationBuilder.InsertData(
-                table: "users",
-                columns: new[] { "id", "account_status", "ApiKey", "created_at", "full_name", "phone", "SecretKeyHash", "updated_at" },
-                values: new object[,]
-                {
-                    { new Guid("11111111-1111-1111-1111-111111111111"), "LIMITED", "demo-user-1-api-key", new DateTimeOffset(new DateTime(2026, 5, 30, 10, 30, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0)), "Andrey K.", "+7 777 000 00 00", "demo-user-1-secret-hash", new DateTimeOffset(new DateTime(2026, 5, 30, 10, 30, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0)) },
-                    { new Guid("22222222-2222-2222-2222-222222222222"), "LIMITED", "demo-user-2-api-key", new DateTimeOffset(new DateTime(2026, 5, 30, 10, 30, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0)), "Client Account Appeal", "+7 777 000 00 02", "demo-user-2-secret-hash", new DateTimeOffset(new DateTime(2026, 5, 30, 10, 30, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0)) },
-                    { new Guid("33333333-3333-3333-3333-333333333333"), "ACTIVE", "demo-user-3-api-key", new DateTimeOffset(new DateTime(2026, 5, 30, 10, 30, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0)), "Client Operation Confirmation", "+7 777 000 00 03", "demo-user-3-secret-hash", new DateTimeOffset(new DateTime(2026, 5, 30, 10, 30, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0)) }
-                });
-
-            migrationBuilder.InsertData(
-                table: "appeal_cases",
-                columns: new[] { "id", "case_type", "client_message", "created_at", "missing_info_json", "operation_id", "route_to", "status", "support_summary", "updated_at", "user_id" },
-                values: new object[] { new Guid("cccccccc-cccc-cccc-cccc-ccccccccccc2"), "ACCOUNT_BLOCK_APPEAL", null, new DateTimeOffset(new DateTime(2026, 5, 30, 10, 30, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0)), "[\"Source of funds confirmation is required\", \"Purpose of incoming transfers is required\"]", null, "COMPLIANCE", "NEED_MORE_INFO", "Client reported account restriction after several incoming transfers. Supporting documents are not attached yet.", new DateTimeOffset(new DateTime(2026, 5, 30, 10, 30, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0)), new Guid("22222222-2222-2222-2222-222222222222") });
-
-            migrationBuilder.InsertData(
-                table: "operations",
-                columns: new[] { "id", "amount", "block_reason_code", "created_at", "currency", "recipient_account", "recipient_name", "status", "updated_at", "user_id" },
-                values: new object[,]
-                {
-                    { new Guid("aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaa1"), 250000m, "CLIENT_CONFIRMATION_REQUIRED", new DateTimeOffset(new DateTime(2026, 5, 30, 10, 30, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0)), "KZT", "KZ00 **** **** 1234", "Alisher M.", "PENDING_CONFIRMATION", new DateTimeOffset(new DateTime(2026, 5, 30, 10, 30, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0)), new Guid("11111111-1111-1111-1111-111111111111") },
-                    { new Guid("aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaa3"), 45000m, "CLIENT_CONFIRMATION_REQUIRED", new DateTimeOffset(new DateTime(2026, 5, 30, 10, 30, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0)), "KZT", "KZ00 **** **** 9876", "Service Company", "PENDING_CONFIRMATION", new DateTimeOffset(new DateTime(2026, 5, 30, 10, 30, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0)), new Guid("33333333-3333-3333-3333-333333333333") }
-                });
-
-            migrationBuilder.InsertData(
-                table: "appeal_cases",
-                columns: new[] { "id", "case_type", "client_message", "created_at", "missing_info_json", "operation_id", "route_to", "status", "support_summary", "updated_at", "user_id" },
-                values: new object[] { new Guid("cccccccc-cccc-cccc-cccc-ccccccccccc3"), "OPERATION_CONFIRMATION", null, new DateTimeOffset(new DateTime(2026, 5, 30, 10, 30, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0)), "[]", new Guid("aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaa3"), "SUPPORT", "SUBMITTED", "Client confirmed service payment. Recipient is a company/service. Payment check is attached.", new DateTimeOffset(new DateTime(2026, 5, 30, 10, 30, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0)), new Guid("33333333-3333-3333-3333-333333333333") });
 
             migrationBuilder.CreateIndex(
                 name: "IX_appeal_answers_case_id",

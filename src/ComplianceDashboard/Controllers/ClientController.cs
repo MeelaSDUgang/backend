@@ -1,10 +1,12 @@
 using ComplianceDashboard.Contracts;
 using ComplianceDashboard.Contracts.Appeals;
 using ComplianceDashboard.Services;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
 namespace ComplianceDashboard.Controllers;
 
+[Authorize]
 [Route("api")]
 [Tags("Client")]
 public class ClientController(IClientAppealService clientAppealService) : ApiControllerBase
@@ -14,7 +16,9 @@ public class ClientController(IClientAppealService clientAppealService) : ApiCon
     [ProducesResponseType<ApiErrorResponse>(StatusCodes.Status404NotFound)]
     public async Task<ActionResult<UserResponse>> GetCurrentUser(CancellationToken cancellationToken)
     {
-        return FromServiceResult(await clientAppealService.GetCurrentUserAsync(cancellationToken));
+        if (!TryGetCurrentUserId(out var userId)) return Unauthorized();
+
+        return FromServiceResult(await clientAppealService.GetCurrentUserAsync(userId, cancellationToken));
     }
 
     [HttpGet("operations/blocked")]
@@ -22,6 +26,8 @@ public class ClientController(IClientAppealService clientAppealService) : ApiCon
     [ProducesResponseType<ApiErrorResponse>(StatusCodes.Status404NotFound)]
     public async Task<ActionResult<OperationResponse>> GetBlockedOperation(CancellationToken cancellationToken)
     {
-        return FromServiceResult(await clientAppealService.GetBlockedOperationAsync(cancellationToken));
+        if (!TryGetCurrentUserId(out var userId)) return Unauthorized();
+
+        return FromServiceResult(await clientAppealService.GetBlockedOperationAsync(userId, cancellationToken));
     }
 }

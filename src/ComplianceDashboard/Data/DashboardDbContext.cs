@@ -284,6 +284,9 @@ public partial class DashboardDbContext : DbContext
             entity.Property(e => e.FullName)
                 .HasMaxLength(200)
                 .HasColumnName("full_name");
+            entity.Property(e => e.PasswordHash)
+                .HasMaxLength(512)
+                .HasColumnName("password_hash");
             entity.Property(e => e.Phone)
                 .HasMaxLength(32)
                 .HasColumnName("phone");
