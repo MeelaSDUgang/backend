@@ -83,6 +83,13 @@ builder.Services.AddCors(options =>
 
 var app = builder.Build();
 
+using (var scope = app.Services.CreateScope())
+{
+    var dbContext = scope.ServiceProvider.GetRequiredService<DashboardDbContext>();
+    var passwordHasher = scope.ServiceProvider.GetRequiredService<IPasswordHasher>();
+    await DbInitializer.SeedAsync(dbContext, passwordHasher);
+}
+
 app.UseCors();
 app.UseAuthentication();
 app.UseAuthorization();

@@ -8,6 +8,10 @@ public interface IClientAppealService
 
     Task<ServiceResult<OperationResponse>> GetBlockedOperationAsync(Guid userId, CancellationToken cancellationToken);
 
+    Task<IReadOnlyCollection<OperationResponse>> GetBlockedOperationsAsync(
+        Guid userId,
+        CancellationToken cancellationToken);
+
     Task<ServiceResult<AppealCaseResponse>> CreateAppealCaseAsync(
         Guid userId,
         CreateAppealCaseRequest request,

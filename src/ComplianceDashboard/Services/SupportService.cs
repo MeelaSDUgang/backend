@@ -14,8 +14,7 @@ public class SupportService(DashboardDbContext dbContext) : ISupportService
         nameof(AppealCaseStatus.SUBMITTED),
         nameof(AppealCaseStatus.WAITING_SUPPORT),
         nameof(AppealCaseStatus.NEED_MORE_INFO),
-        nameof(AppealCaseStatus.RESOLVED),
-        nameof(AppealCaseStatus.ESCALATED)
+        nameof(AppealCaseStatus.RESOLVED)
     ];
 
     public async Task<IReadOnlyCollection<SupportCaseListItemResponse>> GetSupportCasesAsync(
@@ -162,7 +161,8 @@ public class SupportService(DashboardDbContext dbContext) : ISupportService
                 break;
 
             case SupportDecisionType.ESCALATE:
-                appealCase.Status = AppealCaseStatus.ESCALATED.ToString();
+                appealCase.Status = AppealCaseStatus.WAITING_SUPPORT.ToString();
+                appealCase.RouteTo = RouteTo.ANTIFRAUD.ToString();
                 break;
         }
     }

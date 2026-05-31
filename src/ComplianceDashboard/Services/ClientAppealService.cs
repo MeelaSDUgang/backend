@@ -38,6 +38,24 @@ public class ClientAppealService(DashboardDbContext dbContext) : IClientAppealSe
             : ServiceResult<OperationResponse>.Success(ResponseMapper.ToResponse(operation));
     }
 
+    public async Task<IReadOnlyCollection<OperationResponse>> GetBlockedOperationsAsync(
+        Guid userId,
+        CancellationToken cancellationToken)
+    {
+        var operations = await dbContext.Operations
+            .AsNoTracking()
+            .Where(operation => operation.UserId == userId)
+            .Where(operation => operation.Status == OperationStatus.PENDING_CONFIRMATION.ToString() ||
+                                operation.Status == OperationStatus.BLOCKED.ToString())
+            .OrderBy(operation => operation.BlockReasonCode == BlockReasonCode.CLIENT_CONFIRMATION_REQUIRED.ToString()
+                ? 0
+                : 1)
+            .ThenByDescending(operation => operation.CreatedAt)
+            .ToListAsync(cancellationToken);
+
+        return operations.Select(ResponseMapper.ToResponse).ToArray();
+    }
+
     public async Task<ServiceResult<AppealCaseResponse>> CreateAppealCaseAsync(
         Guid userId,
         CreateAppealCaseRequest request,
@@ -76,7 +94,7 @@ public class ClientAppealService(DashboardDbContext dbContext) : IClientAppealSe
             OperationId = operation?.Id,
             CaseType = caseType.ToString(),
             Status = AppealCaseStatus.DRAFT.ToString(),
-            RouteTo = RouteTo.SUPPORT.ToString(),
+            RouteTo = ResolveInitialRoute(operation, caseType).ToString(),
             CreatedAt = now,
             UpdatedAt = now
         };
@@ -260,6 +278,18 @@ public class ClientAppealService(DashboardDbContext dbContext) : IClientAppealSe
             .Include(appealCase => appealCase.AppealDocuments)
             .Include(appealCase => appealCase.SupportDecisions)
             .Where(appealCase => appealCase.Id == caseId && appealCase.UserId == userId);
+    }
+
+    private static RouteTo ResolveInitialRoute(Operation? operation, AppealCaseType caseType)
+    {
+        if (caseType == AppealCaseType.ACCOUNT_BLOCK_APPEAL) return RouteTo.COMPLIANCE;
+
+        return operation?.BlockReasonCode switch
+        {
+            nameof(BlockReasonCode.SUSPICIOUS_TRANSFER) => RouteTo.ANTIFRAUD,
+            nameof(BlockReasonCode.ACCOUNT_RESTRICTION) => RouteTo.COMPLIANCE,
+            _ => RouteTo.SUPPORT
+        };
     }
 
     private static string BuildSupportSummary(

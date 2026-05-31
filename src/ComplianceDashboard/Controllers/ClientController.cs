@@ -30,4 +30,14 @@ public class ClientController(IClientAppealService clientAppealService) : ApiCon
 
         return FromServiceResult(await clientAppealService.GetBlockedOperationAsync(userId, cancellationToken));
     }
+
+    [HttpGet("operations/blocked/all")]
+    [ProducesResponseType<IReadOnlyCollection<OperationResponse>>(StatusCodes.Status200OK)]
+    public async Task<ActionResult<IReadOnlyCollection<OperationResponse>>> GetBlockedOperations(
+        CancellationToken cancellationToken)
+    {
+        if (!TryGetCurrentUserId(out var userId)) return Unauthorized();
+
+        return Ok(await clientAppealService.GetBlockedOperationsAsync(userId, cancellationToken));
+    }
 }

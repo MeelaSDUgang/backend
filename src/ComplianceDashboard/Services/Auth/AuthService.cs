@@ -20,9 +20,9 @@ public class AuthService(
         if (string.IsNullOrWhiteSpace(request.Phone))
             return ServiceResult<AuthResponse>.Failure(ErrorCodes.ValidationError, "phone is required.");
 
-        if (string.IsNullOrWhiteSpace(request.Password) || request.Password.Length < 8)
+        if (string.IsNullOrWhiteSpace(request.Password) || request.Password.Length < 6)
             return ServiceResult<AuthResponse>.Failure(ErrorCodes.ValidationError,
-                "password must be at least 8 characters.");
+                "password must be at least 6 characters.");
 
         var phone = request.Phone.Trim();
         var exists = await dbContext.Users.AnyAsync(user => user.Phone == phone, cancellationToken);
@@ -46,6 +46,7 @@ public class AuthService(
 
         dbContext.Users.Add(user);
         await dbContext.SaveChangesAsync(cancellationToken);
+        await DbInitializer.EnsureBlockedOperationsAsync(dbContext, user.Id, cancellationToken);
 
         return ServiceResult<AuthResponse>.Success(CreateAuthResponse(user));
     }
@@ -58,6 +59,8 @@ public class AuthService(
         var user = await dbContext.Users.FirstOrDefaultAsync(user => user.Phone == phone, cancellationToken);
         if (user is null || !passwordHasher.Verify(request.Password, user.PasswordHash))
             return ServiceResult<AuthResponse>.Failure(ErrorCodes.ValidationError, "Invalid phone or password.");
+
+        await DbInitializer.EnsureBlockedOperationsAsync(dbContext, user.Id, cancellationToken);
 
         return ServiceResult<AuthResponse>.Success(CreateAuthResponse(user));
     }

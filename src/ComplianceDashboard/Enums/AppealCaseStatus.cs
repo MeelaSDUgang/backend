@@ -6,6 +6,5 @@ public enum AppealCaseStatus
     SUBMITTED,
     WAITING_SUPPORT,
     NEED_MORE_INFO,
-    RESOLVED,
-    ESCALATED
+    RESOLVED
 }
