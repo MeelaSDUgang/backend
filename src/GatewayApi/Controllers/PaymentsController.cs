@@ -37,13 +37,39 @@ public class PaymentsController : ControllerBase
         _logger = logger;
     }
 
+    /// <summary>
+    ///     Processes a P2P payment through fraud scoring and the bank adapter.
+    /// </summary>
+    /// <remarks>
+    ///     Requires HMAC headers and a UUID Idempotency-Key header.
+    ///     Fraud outcomes:
+    ///     - none: payment is sent to bank and completed
+    ///     - low: transaction is saved as PENDING
+    ///     - medium: transaction is saved as REJECTED and sent to compliance review
+    ///     - high: transaction is FAILED and the user account is blocked
+    /// </remarks>
     [HttpPost("p2p")]
-    public async Task<IActionResult> ProcessP2P([FromBody] P2PRequest request, CancellationToken ct)
+    [ProducesResponseType(typeof(PaymentResponse), StatusCodes.Status201Created)]
+    [ProducesResponseType(typeof(object), StatusCodes.Status202Accepted)]
+    [ProducesResponseType(typeof(ErrorResponse), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(typeof(object), StatusCodes.Status403Forbidden)]
+    [ProducesResponseType(typeof(ErrorResponse), StatusCodes.Status503ServiceUnavailable)]
+    public async Task<IActionResult> ProcessP2P(
+        [FromHeader(Name = "Idempotency-Key")] string? idempotencyKey,
+        [FromBody] P2PRequest request,
+        CancellationToken ct)
     {
         return await ProcessPayment(request.BankId, request.Amount, request.Currency, GatewayType.P2P, request, ct);
     }
 
+    /// <summary>
+    ///     Returns payment transaction status for the authenticated user.
+    /// </summary>
     [HttpGet("{transactionId:guid}")]
+    [ProducesResponseType(typeof(TransactionStatusResponse), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ErrorResponse), StatusCodes.Status404NotFound)]
+    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
     public async Task<IActionResult> GetTransactionStatus(Guid transactionId, CancellationToken ct)
     {
         var getUser = GetUser();

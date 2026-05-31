@@ -1,0 +1,314 @@
+{
+  "info": {
+    "_postman_id": "4e1789b1-e53e-47aa-91c0-b4a35d6a1f06",
+    "name": "Payment Gateway API",
+    "description": "Local payment gateway requests with automatic HMAC headers. Import `payment-gateway.postman_environment.json`, select the environment, run `Get gateways` once to fill `bankId`, then call payment requests.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "event": [
+    {
+      "listen": "prerequest",
+      "script": {
+        "type": "text/javascript",
+        "exec": [
+          "const apiKey = pm.environment.get('apiKey');",
+          "const secretKey = pm.environment.get('secretKey');",
+          "",
+          "if (!apiKey || !secretKey) {",
+          "  throw new Error('Set apiKey and secretKey in the selected Postman environment.');",
+          "}",
+          "",
+          "function uuidv4() {",
+          "  return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function (c) {",
+          "    const r = Math.random() * 16 | 0;",
+          "    const v = c === 'x' ? r : (r & 0x3 | 0x8);",
+          "    return v.toString(16);",
+          "  });",
+          "}",
+          "",
+          "const timestamp = Math.floor(Date.now() / 1000).toString();",
+          "const rawBody = pm.request.body && pm.request.body.mode === 'raw'",
+          "  ? pm.variables.replaceIn(pm.request.body.raw || '')",
+          "  : '';",
+          "const signature = CryptoJS.HmacSHA256(rawBody + timestamp, secretKey).toString(CryptoJS.enc.Hex).toLowerCase();",
+          "",
+          "pm.request.headers.upsert({ key: 'X-API-Key', value: apiKey });",
+          "pm.request.headers.upsert({ key: 'X-Timestamp', value: timestamp });",
+          "pm.request.headers.upsert({ key: 'X-Signature', value: signature });",
+          "",
+          "if (pm.request.method === 'POST') {",
+          "  const idempotencyKey = uuidv4();",
+          "  pm.environment.set('lastIdempotencyKey', idempotencyKey);",
+          "  pm.request.headers.upsert({ key: 'Idempotency-Key', value: idempotencyKey });",
+          "}",
+          "",
+          "pm.request.headers.upsert({ key: 'Content-Type', value: 'application/json' });"
+        ]
+      }
+    }
+  ],
+  "item": [
+    {
+      "name": "Gateways",
+      "item": [
+        {
+          "name": "Get gateways",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('gateway list returned', function () {",
+                  "  pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "const gateways = pm.response.json();",
+                  "if (Array.isArray(gateways) && gateways.length > 0) {",
+                  "  pm.environment.set('bankId', gateways[0].id);",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{gatewayBaseUrl}}/api/v1/gateways",
+              "host": [
+                "{{gatewayBaseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "gateways"
+              ]
+            },
+            "description": "Loads active bank adapters and stores the first gateway id into `bankId` environment variable."
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Payments",
+      "item": [
+        {
+          "name": "P2P none risk -> COMPLETED",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('created/completed', function () {",
+                  "  pm.expect(pm.response.code).to.be.oneOf([200, 201]);",
+                  "});",
+                  "",
+                  "const json = pm.response.json();",
+                  "if (json.transactionId) pm.environment.set('transactionId', json.transactionId);",
+                  "pm.test('status is COMPLETED', function () {",
+                  "  pm.expect(json.status).to.eql('COMPLETED');",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"bankId\": \"{{bankId}}\",\n  \"amount\": 9839.64,\n  \"currency\": \"KZT\",\n  \"message\": \"Test none risk payment\",\n  \"sender\": {\n    \"phoneNumber\": \"C1231006815\"\n  },\n  \"receiver\": {\n    \"phoneNumber\": \"M1979787155\"\n  },\n  \"step\": 12,\n  \"type\": \"PAYMENT\",\n  \"oldbalanceOrg\": 170136,\n  \"newbalanceOrig\": 160296.36,\n  \"oldbalanceDest\": 0,\n  \"newbalanceDest\": 0,\n  \"nameOrig\": \"C1231006815\",\n  \"nameDest\": \"M1979787155\",\n  \"label\": \"Legitimate PAYMENT\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{gatewayBaseUrl}}/api/v1/payments/p2p",
+              "host": [
+                "{{gatewayBaseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "payments",
+                "p2p"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "P2P low risk -> PENDING",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('created', function () {",
+                  "  pm.response.to.have.status(201);",
+                  "});",
+                  "",
+                  "const json = pm.response.json();",
+                  "if (json.transactionId) pm.environment.set('transactionId', json.transactionId);",
+                  "pm.test('status is PENDING', function () {",
+                  "  pm.expect(json.status).to.eql('PENDING');",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"bankId\": \"{{bankId}}\",\n  \"amount\": 1078013.76,\n  \"currency\": \"KZT\",\n  \"message\": \"Test low risk payment\",\n  \"sender\": {\n    \"phoneNumber\": \"C2583226158\"\n  },\n  \"receiver\": {\n    \"phoneNumber\": \"C8388441864\"\n  },\n  \"step\": 44,\n  \"type\": \"TRANSFER\",\n  \"oldbalanceOrg\": 0,\n  \"newbalanceOrig\": 0,\n  \"oldbalanceDest\": 500,\n  \"newbalanceDest\": 500,\n  \"nameOrig\": \"C2583226158\",\n  \"nameDest\": \"C8388441864\",\n  \"label\": \"Legitimate TRANSFER\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{gatewayBaseUrl}}/api/v1/payments/p2p",
+              "host": [
+                "{{gatewayBaseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "payments",
+                "p2p"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "P2P medium risk -> REJECTED",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('accepted for compliance review', function () {",
+                  "  pm.response.to.have.status(202);",
+                  "});",
+                  "",
+                  "const json = pm.response.json();",
+                  "if (json.transactionId) pm.environment.set('transactionId', json.transactionId);",
+                  "pm.test('status is REJECTED', function () {",
+                  "  pm.expect(json.status).to.eql('REJECTED');",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"bankId\": \"{{bankId}}\",\n  \"amount\": 132842.64,\n  \"currency\": \"KZT\",\n  \"message\": \"Test medium risk payment\",\n  \"sender\": {\n    \"phoneNumber\": \"C1420197234\"\n  },\n  \"receiver\": {\n    \"phoneNumber\": \"C9876543210\"\n  },\n  \"step\": 35,\n  \"type\": \"CASH_OUT\",\n  \"oldbalanceOrg\": 145000,\n  \"newbalanceOrig\": 100,\n  \"oldbalanceDest\": 0,\n  \"newbalanceDest\": 132842.64,\n  \"nameOrig\": \"C1420197234\",\n  \"nameDest\": \"C9876543210\",\n  \"label\": \"Legitimate CASH_OUT\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{gatewayBaseUrl}}/api/v1/payments/p2p",
+              "host": [
+                "{{gatewayBaseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "payments",
+                "p2p"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "P2P high risk -> FAILED and BLOCKED",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('forbidden by anti-fraud', function () {",
+                  "  pm.response.to.have.status(403);",
+                  "});",
+                  "",
+                  "const json = pm.response.json();",
+                  "if (json.transactionId) pm.environment.set('transactionId', json.transactionId);",
+                  "pm.test('status is FAILED', function () {",
+                  "  pm.expect(json.status).to.eql('FAILED');",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"bankId\": \"{{bankId}}\",\n  \"amount\": 181,\n  \"currency\": \"KZT\",\n  \"message\": \"Test high risk payment\",\n  \"sender\": {\n    \"phoneNumber\": \"C1305486145\"\n  },\n  \"receiver\": {\n    \"phoneNumber\": \"C553264065\"\n  },\n  \"step\": 1,\n  \"type\": \"TRANSFER\",\n  \"oldbalanceOrg\": 181,\n  \"newbalanceOrig\": 0,\n  \"oldbalanceDest\": 0,\n  \"newbalanceDest\": 0,\n  \"nameOrig\": \"C1305486145\",\n  \"nameDest\": \"C553264065\",\n  \"label\": \"Legitimate TRANSFER\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{gatewayBaseUrl}}/api/v1/payments/p2p",
+              "host": [
+                "{{gatewayBaseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "payments",
+                "p2p"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Get transaction status",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{gatewayBaseUrl}}/api/v1/payments/{{transactionId}}",
+              "host": [
+                "{{gatewayBaseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "payments",
+                "{{transactionId}}"
+              ]
+            },
+            "description": "Uses the latest `transactionId` saved by payment requests."
+          },
+          "response": []
+        }
+      ]
+    }
+  ],
+  "variable": []
+}
