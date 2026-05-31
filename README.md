@@ -1,36 +1,36 @@
 # Happeal Backend
 
-Backend for **Happeal** — a hackathon MVP for faster support intake after blocked bank operations.
+Backend для **Happeal** — hackathon MVP для более быстрого сбора информации после блокировки банковских операций.
 
-Happeal does not replace antifraud logic and does not automatically unblock transactions. The goal is simpler and safer: when an operation is blocked or needs confirmation, the system helps collect the client’s context, generate a structured support summary, and pass the case to the right support/compliance flow.
+Happeal не заменяет антифрод-логику и не разблокирует операции автоматически. Цель решения проще и безопаснее: когда операция заблокирована или требует подтверждения, система помогает собрать контекст от клиента, сформировать структурированное резюме для поддержки и передать кейс в нужный support/compliance flow.
 
-## What it does
+## Что делает проект
 
-The backend supports two main flows:
+Backend поддерживает два основных сценария:
 
-1. **Client appeal flow**
+1. **Клиентский appeal flow**
 
-   * get the current demo user;
-   * get the latest blocked operation;
-   * create an appeal case;
-   * save client answers;
-   * attach mock documents;
-   * generate a support summary.
+   * получить текущего demo-пользователя;
+   * получить последнюю заблокированную операцию;
+   * создать appeal case;
+   * сохранить ответы клиента;
+   * прикрепить mock-документы;
+   * сгенерировать summary для поддержки.
 
 2. **Support dashboard flow**
 
-   * view submitted appeal cases;
-   * open full case details;
-   * submit a support decision: confirm operation, request more info, keep blocked, or escalate.
+   * посмотреть отправленные appeal cases;
+   * открыть полную информацию по кейсу;
+   * принять решение по кейсу: подтвердить операцию, запросить больше информации, оставить блокировку или эскалировать.
 
-## Project structure
+## Структура проекта
 
 ```txt
 backend/
 ├── src/
-│   ├── ComplianceDashboard/   # appeal flow + support dashboard API
-│   └── GatewayApi/            # gateway/payment-related API service
-├── compose.yaml               # local Docker setup
+│   ├── ComplianceDashboard/   # API для appeal flow и dashboard поддержки
+│   └── GatewayApi/            # gateway/payment-related API сервис
+├── compose.yaml               # локальный Docker setup
 └── backend.slnx
 ```
 
@@ -42,27 +42,27 @@ backend/
 * Docker Compose
 * Swagger / OpenAPI
 
-## Running locally
+## Локальный запуск
 
-The easiest way to run the backend is through Docker Compose:
+Проще всего запустить backend через Docker Compose:
 
 ```bash
 docker compose up --build
 ```
 
-This starts:
+После запуска будут доступны:
 
-* `ComplianceDashboard` on `http://localhost:3001`
-* `GatewayApi` on `http://localhost:3002`
-* PostgreSQL on `localhost:5432`
+* `ComplianceDashboard` на `http://localhost:3001`
+* `GatewayApi` на `http://localhost:3002`
+* PostgreSQL на `localhost:5432`
 
-Swagger for the main dashboard API:
+Swagger для основного dashboard API:
 
 ```txt
 http://localhost:3001/swagger
 ```
 
-## Main API endpoints
+## Основные API endpoints
 
 ### Health check
 
@@ -90,23 +90,23 @@ GET /api/support/appeal-cases/{caseId}
 POST /api/support/appeal-cases/{caseId}/decision
 ```
 
-## Example flow
+## Пример flow
 
-1. Frontend requests the latest blocked operation.
-2. Client starts an appeal case.
-3. Client answers a short questionnaire.
-4. Optional mock documents are attached.
-5. Backend generates a structured summary for support.
-6. Support team sees the case in the dashboard.
-7. Operator decides what to do next: confirm, request more info, keep blocked, or escalate.
+1. Frontend запрашивает последнюю заблокированную операцию.
+2. Клиент создаёт appeal case.
+3. Клиент отвечает на короткий опросник.
+4. При необходимости прикрепляются mock-документы.
+5. Backend генерирует структурированное summary для поддержки.
+6. Служба поддержки видит кейс в dashboard.
+7. Оператор решает, что делать дальше: подтвердить операцию, запросить больше информации, оставить блокировку или эскалировать.
 
 ## Notes
 
-This is an MVP built for a hackathon demo. Some parts are intentionally simplified:
+Это MVP, собранный для hackathon demo. Некоторые части намеренно упрощены:
 
-* no real authentication;
-* mock user and seeded demo data;
-* mock document upload instead of real file storage;
-* support decisions are demo behavior, not real banking actions.
+* нет настоящей аутентификации;
+* используются mock user и seeded demo data;
+* mock-загрузка документов вместо настоящего file storage;
+* решения поддержки — demo behavior, а не реальные банковские действия.
 
-The important part is the process: Happeal shows how a bank can reduce manual support intake after blocked operations while keeping the final decision inside the existing bank process.
+Главное в проекте — сам процесс: Happeal показывает, как банк может снизить ручную нагрузку на поддержку после блокировки операций, при этом оставляя финальное решение внутри существующего банковского процесса.
